@@ -1,0 +1,409 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/////////////////////////
+// ENUMS
+/////////////////////////
+
+enum RoleScope {
+  SYSTEM
+  TENANT
+}
+
+enum PartnerType {
+  CUSTOMER
+  SUPPLIER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+enum DeviceType {
+  ACCESS_CONTROL
+  CAMERA
+  BIOMETRIC
+}
+enum DeviceStatus {
+  CONNECTED
+  DISCONNECTED
+}
+enum CommandStatus {
+  PENDING
+  PROCESSING
+  DONE
+  ERROR
+}
+enum CommandType {
+  SYNC_MEMBERSHIP
+  SYNC_FACE
+  DELETE_USER
+}
+/////////////////////////
+// CORE
+/////////////////////////
+
+model Company {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logoUrl String? // 👈 opcional
+
+  users               User[]
+  branches            Branch[]
+  userRoles           UserRole[]
+  role                Role[]
+  plan                Plan[]
+  partners            Partner[]
+  // 🔥 CAMBIO AQUÍ
+  membershipSales     MembershipSale[]
+  customerMemberships CustomerMembership[]
+
+  companyPermissions CompanyPermission[]
+  devices Device[]
+  agents Agent[]
+  commands Command[]
+}
+
+model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
+  fullName String
+
+  isActive Boolean @default(true)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  roles UserRole[]
+  membershipSales MembershipSale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  
+
+  @@index([companyId])
+  @@index([branchId])
+}
+
+/////////////////////////
+// RBAC
+/////////////////////////
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String
+  scope       RoleScope
+  companyId   String?
+  company     Company?         @relation(fields: [companyId], references: [id])
+  permissions RolePermission[]
+  users       UserRole[]
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+
+  @@unique([name, scope, companyId])
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  code        String  @unique
+  description String?
+
+  scope              RoleScope // 👈 CLAVE
+  isActive           Boolean             @default(true)
+  roles              RolePermission[]
+  companyPermissions CompanyPermission[]
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+}
+
+model CompanyPermission {
+  id           String @id @default(uuid())
+  companyId    String
+  permissionId String
+
+  company    Company    @relation(fields: [companyId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, permissionId])
+  @@index([companyId])
+  @@index([permissionId])
+}
+
+model UserRole {
+  id        String  @id @default(uuid())
+  userId    String
+  roleId    String
+  companyId String? // 👈 clave
+
+  user    User     @relation(fields: [userId], references: [id])
+  role    Role     @relation(fields: [roleId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@unique([userId, roleId, companyId])
+}
+
+/////////////////////////
+// MULTI-SUCURSAL
+/////////////////////////
+
+model Branch {
+  id   String @id @default(uuid())
+  name String
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  isActive  Boolean @default(true)
+  users     User[] // 🔥 MUCHOS usuarios
+
+  createdAt DateTime @default(now())
+  devices Device[]
+  agents Agent[]
+  commands Command[]
+  membershipSales MembershipSale[]
+  memberships      CustomerMembership[]
+  @@unique([name, companyId]) // 🔥 CLAVE
+}
+
+///////////////
+// CLIENTES-PROVEEDORES
+//////////////
+model Partner {
+  id        String  @id @db.Text
+  companyId String  @db.Text
+
+  type      PartnerType
+
+  name      String  @db.Text
+  document  String? @db.Text
+  phone     String? @db.Text
+  email     String? @db.Text
+  address   String? @db.Text
+  
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @db.Timestamp(6)
+  imageUrl  String?
+  // 🔥 relaciones
+  company Company @relation(fields: [companyId], references: [id])
+
+  memberships      CustomerMembership[]
+  membershipSales  MembershipSale[]
+
+  @@index([companyId])
+}
+
+model Device {
+  id        String @id @default(uuid())
+
+  name      String
+  ip        String
+  port      Int?
+
+  username  String?
+  password  String?
+
+  deviceType DeviceType
+  brand      String
+
+  // 🔥 ESTE ES EL QUE USA EL AGENT
+  isActive Boolean @default(true)
+
+  companyId String
+  branchId  String
+
+  // 🔥 ESTADO REAL DEL DISPOSITIVO
+  status           DeviceStatus @default(DISCONNECTED)
+  lastConnectionAt DateTime?
+
+  // 🔥 AGENT
+  agentId String?
+  agent   Agent? @relation(fields: [agentId], references: [id])
+
+  // 🔥 HEARTBEAT DEL AGENT
+  lastSeenAt DateTime?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+
+  @@index([companyId])
+  @@index([branchId])
+  @@unique([branchId, ip])
+}
+
+
+
+/////////////////
+// SUSCRIPCIONES
+//////////////////
+model Plan {
+  id           String  @id @default(uuid())
+  name         String
+  description  String?
+  price        Decimal
+  durationDays Int
+
+  isActive Boolean @default(true)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  // 🔥 CAMBIO
+  membershipSales MembershipSale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, companyId])
+}
+
+model MembershipSale {
+  id String @id @default(uuid())
+
+  partnerId String
+  planId    String
+  companyId String
+  branchId    String?
+
+  startDate DateTime
+  endDate   DateTime
+
+  userId       String?   // 👈 vendedor
+  saleDate     DateTime @default(now()) // 👈 ESTE
+
+  status MembershipStatus @default(ACTIVE)
+
+  price Decimal @db.Decimal(10, 2)
+
+  user         User?     @relation(fields: [userId], references: [id])
+  partner Partner @relation(fields: [partnerId], references: [id])
+  plan    Plan    @relation(fields: [planId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
+  createdAt DateTime @default(now())
+   commands Command[]
+  @@index([partnerId])
+  @@index([endDate])
+}
+
+model CustomerMembership {
+  id String @id @default(uuid())
+
+  customerId String @unique
+  companyId  String
+  branchId   String
+  startDate DateTime
+  endDate   DateTime
+
+  status MembershipStatus @default(ACTIVE)
+
+  hikvisionUserId   String?
+  deletedFromDevice Boolean @default(false)
+
+  lastSyncAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 🔥 RELACIONES
+  customer Partner @relation(fields: [customerId], references: [id])
+  company  Company @relation(fields: [companyId], references: [id])
+  branch   Branch  @relation(fields: [branchId], references: [id])
+  @@index([endDate])
+}
+
+/////////
+// AGENTE - SYNC CON EQUIPOS ACCESS_CONTROL
+/////
+model Agent {
+  id        String @id @default(uuid())
+  name      String
+  agentKey  String @unique
+
+  companyId String
+  branchId  String
+
+  isActive  Boolean @default(true)
+
+  // 💓 HEARTBEAT
+  lastSeenAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+
+  devices Device[]
+
+  @@unique([branchId, name])
+  @@index([companyId])
+  @@index([branchId])
+}
+/////////
+/// COMMANDS
+/////////
+
+model Command {
+  id        String   @id @default(uuid())
+
+  type      CommandType
+  payload   Json
+  status      CommandStatus @default(PENDING)
+  attempts    Int     @default(0)
+  error String?
+
+  companyId String
+  branchId  String
+
+  membershipSaleId String?
+
+  createdAt DateTime @default(now())
+  executedAt DateTime?
+
+  company   Company @relation(fields: [companyId], references: [id])
+  branch    Branch  @relation(fields: [branchId], references: [id])
+  membershipSale   MembershipSale? @relation(fields: [membershipSaleId], references: [id])
+  @@index([companyId])
+  @@index([branchId])
+  @@index([status])
+  @@index([branchId, status]) // 🔥 CLAVE
+   @@index([membershipSaleId])
+}
