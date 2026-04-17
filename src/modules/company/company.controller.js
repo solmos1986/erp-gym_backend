@@ -39,7 +39,13 @@ export const registerCompany = async (req, res) => {
 
       // 🔐 hash password
       const hashedPassword = await bcrypt.hash(password, 10);
-
+      // Crear branch MAIN para la empresa
+      const branch = await tx.branch.create({
+        data: {
+          name: "Principal",
+          companyId: company.id
+        }
+      });
       // 👤 crear owner
       const user = await tx.user.create({
         data: {
@@ -50,7 +56,9 @@ export const registerCompany = async (req, res) => {
           company: {
       connect: {
         id: company.id
-      }
+      },branch: {
+      connect: { id: branch.id }
+    }
     }
         }
       });
