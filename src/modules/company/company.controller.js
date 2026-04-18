@@ -5,12 +5,16 @@ import bcrypt from "bcrypt";
 // ➕ CREAR COMPANY
 // =========================
 export const registerCompany = async (req, res) => {
-  const { name, fullName, email, password, permissions } = req.body;
+  const { name, fullName, email, password, permissions, logoUrl } = req.body;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
 
+      // ========================
+      // VALIDACIONES
+      // ========================
       if (!name) throw new Error("Nombre de empresa requerido");
+      if (!fullName) throw new Error("Nombre completo requerido");
       if (!email) throw new Error("Email requerido");
       if (!password) throw new Error("Password requerido");
 
@@ -20,7 +24,9 @@ export const registerCompany = async (req, res) => {
         throw new Error("Debe seleccionar permisos");
       }
 
-      // 🔍 validar email único
+      // ========================
+      // VALIDAR EMAIL ÚNICO
+      // ========================
       const existingUser = await tx.user.findUnique({
         where: { email }
       });
@@ -29,68 +35,116 @@ export const registerCompany = async (req, res) => {
         throw new Error("El email ya está registrado");
       }
 
-      // 🏢 crear empresa
+      // ========================
+      // VALIDAR PERMISOS
+      // ========================
+      const validPermissions = await tx.permission.findMany({
+        where: {
+          id: { in: parsedPermissions },
+          scope: "TENANT"
+        }
+      });
+
+      if (validPermissions.length !== parsedPermissions.length) {
+        throw new Error("Permisos inválidos detectados");
+      }
+
+      // ========================
+      // CREAR EMPRESA
+      // ========================
       const company = await tx.company.create({
         data: {
           name,
+          logoUrl,
           isActive: true
         }
       });
 
-      // 🔐 hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
-      // Crear branch MAIN para la empresa
+      // ========================
+      // CREAR BRANCH
+      // ========================
       const branch = await tx.branch.create({
         data: {
           name: "Principal",
           companyId: company.id
         }
       });
-      const ownerRole = await tx.role.findFirst({
-        where: {
+
+      // ========================
+      // CREAR ROLE OWNER
+      // ========================
+      const ownerRole = await tx.role.create({
+        data: {
           name: "OWNER",
           scope: "TENANT",
           companyId: company.id
         }
       });
-      
-      // 👤 crear owner
+
+      // ========================
+      // ASIGNAR PERMISOS AL ROLE
+      // ========================
+      await tx.rolePermission.createMany({
+        data: parsedPermissions.map((permissionId) => ({
+          roleId: ownerRole.id,
+          permissionId
+        })),
+        skipDuplicates: true // 🔥 IMPORTANTE
+      });
+
+      // ========================
+      // HASH PASSWORD
+      // ========================
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // ========================
+      // CREAR USUARIO
+      // ========================
       const user = await tx.user.create({
         data: {
           fullName,
           email,
           password: hashedPassword,
-          role: "OWNER",
-          company: {
-            connect: {
-              id: company.id
-            }
-          },
-          branch: {
-            connect: { id: branch.id }
-          }
+          companyId: company.id,
+          branchId: branch.id
         }
       });
 
-      // 🔑 permisos
+      // ========================
+      // ASIGNAR ROLE AL USER
+      // ========================
+      await tx.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: ownerRole.id,
+          companyId: company.id
+        }
+      });
+
+      // ========================
+      // PERMISOS DE EMPRESA
+      // ========================
       await tx.companyPermission.createMany({
         data: parsedPermissions.map((permissionId) => ({
           companyId: company.id,
           permissionId
-        }))
+        })),
+        skipDuplicates: true // 🔥 IMPORTANTE
       });
 
-      return company;
+      return {
+        company,
+        user
+      };
     });
 
     res.status(201).json({
       message: "Empresa creada correctamente",
-      company: result
+      data: result
     });
 
   } catch (error) {
-    
-
+    console.error("❌ ERROR REGISTER COMPANY:", error); // 🔥 LOG REAL
     res.status(400).json({
       message: error.message || "Error creando empresa"
     });
