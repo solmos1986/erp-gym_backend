@@ -1,31 +1,29 @@
-version: '3'
-
 services:
-  backend:
-    container_name: erp_backend
-    image: erp_backend
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: "postgresql://erp_user:Erp123456!@erp_postgres:5432/erp_saas"
-      VITE_API_URL: "https://api.gymcloud.apus-security.com"
-      SECRET_KEY: "mysecretkey"
-    networks:
-      - backend-network
-
   postgres:
-    container_name: erp_postgres
     image: postgres:15
+    container_name: erp_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: erp_user
+      POSTGRES_PASSWORD: Erp123456!
+      POSTGRES_DB: erp_saas
     ports:
       - "5432:5432"
-    environment:
-      POSTGRES_USER: "erp_user"
-      POSTGRES_PASSWORD: "Erp123456!"
-      POSTGRES_DB: "erp_saas"
-    networks:
-      - backend-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
-networks:
-  backend-network:
-    driver: bridge
+  backend:
+    build: .
+    container_name: erp_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  postgres_data:
