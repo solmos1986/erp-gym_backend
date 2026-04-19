@@ -9,7 +9,7 @@ services:
       - "3000:3000"  # Exponer el puerto 3000 para el backend
     environment:
       DATABASE_URL: "postgresql://erp_user:Erp123456!@erp_postgres:5432/erp_saas"  # Cambiar para usar el contenedor de PostgreSQL
-      VITE_API_URL: "http://<your_vps_ip>:3000"  # Dirección de la API
+      VITE_API_URL: "http://144.126.150.74:3000"  # Dirección de la API
       SECRET_KEY: "mysecretkey"
     depends_on:
       - postgres  # Asegúrate de que el backend dependa de PostgreSQL
