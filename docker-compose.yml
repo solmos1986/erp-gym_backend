@@ -6,26 +6,28 @@ services:
     image: erp_backend
     build: .
     ports:
-      - "3000:3000"
+      - "3000:3000"  # Exponer el puerto 3000 para el backend
     environment:
-      DATABASE_URL: "postgresql://erp_user:Erp123456!@erp_postgres:5432/erp_saas"
-      VITE_API_URL: "https://144.126.150.74.com"
+      DATABASE_URL: "postgresql://erp_user:Erp123456!@erp_postgres:5432/erp_saas"  # Cambiar para usar el contenedor de PostgreSQL
+      VITE_API_URL: "http://<your_vps_ip>:3000"  # Dirección de la API
       SECRET_KEY: "mysecretkey"
+    depends_on:
+      - postgres  # Asegúrate de que el backend dependa de PostgreSQL
     networks:
-      - backend-network
+      - default  # Usamos la red predeterminada de Docker
 
   postgres:
     container_name: erp_postgres
     image: postgres:15
     ports:
-      - "5432:5432"
+      - "5432:5432"  # Exponer el puerto 5432 para PostgreSQL
     environment:
       POSTGRES_USER: "erp_user"
       POSTGRES_PASSWORD: "Erp123456!"
       POSTGRES_DB: "erp_saas"
     networks:
-      - backend-network
+      - default  # Usamos la red predeterminada de Docker
 
 networks:
-  default: 
+  default:  # Red predeterminada de Docker, no necesitamos una red personalizada
     driver: bridge
