@@ -21,73 +21,58 @@ import { WebSocketServer } from 'ws';
 import { sendCommandToAgent } from './lib/websocket.server.js';
 
 const app = express();
-
-// Iniciar el trabajo para la expiración de membresías
 startMembershipExpirationJob();
-
 // =============================
 // 🔥 MIDDLEWARES GLOBALES
 // =============================
-
-// Primero, manejar las solicitudes OPTIONS (CORS preflight)
-app.options('*', cors());
-
-// Configurar CORS para permitir tu frontend
-app.use(cors({
-  origin: 'https://gymcloud.apus-security.com',  // Reemplaza con el dominio de tu frontend
-  methods: 'GET,POST,PUT,DELETE',
-  credentials: true,
-}));
-
-// Configuración para recibir JSON en las solicitudes
+app.use(cors());
 app.use(express.json());
 
-// 🔥🔥🔥 SERVIR IMÁGENES
+// 🔥🔥🔥 IMPORTANTE (SERVIR IMÁGENES)
 app.use('/uploads', express.static('uploads'));
 
 // =============================
-// 🚀 RUTAS
+// 🚀 ROUTES
 // =============================
 
-// 🔐 Rutas de autenticación
+// 🔐 AUTH
 app.use("/auth", authRoutes);
 
-// 🏢 Rutas del core (empresa, sucursales, usuarios)
+// 🏢 CORE
 app.use("/companies", companyRoutes);
 app.use("/branches", branchRoutes);
 app.use("/users", userRoutes);
 
-// 🔐 Rutas para roles y permisos
+// 🔐 RBAC
 app.use("/tenant-roles", roleRoutes);
 app.use("/tenant-permissions", permissionRoutes);
 
-// 💰 Rutas de negocio (planes, socios, membresías)
+// 💰 NEGOCIO
 app.use("/plan", planRoutes);
 app.use("/partners", partnerRoutes);
 app.use("/memberships", membershipRoutes);
 
-// 🖥️ Rutas para dispositivos
+// 🖥️ DEVICES
 app.use("/devices", deviceRoutes);
 
-// 🤖 Rutas para agentes y comandos
+// 🤖 AGENT
 app.use("/commands", commandRoutes);
 app.use("/agent", agentRoutes);
 
 // Iniciar el servidor WebSocket
 const wss = new WebSocketServer({ port: 8080 });
 
-// =============================
-// 🧪 RUTA DE SALUD (Health Check)
-// =============================
 
+// =============================
+// 🧪 HEALTH CHECK
+// =============================
 app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
 // =============================
-// ❌ MANEJO DE RUTAS NO ENCONTRADAS
+// ❌ 404 HANDLER
 // =============================
-
 app.use((req, res) => {
   res.status(404).json({
     message: "Ruta no encontrada"
@@ -95,11 +80,10 @@ app.use((req, res) => {
 });
 
 // =============================
-// 🔥 MANEJO DE ERRORES GLOBALES
+// 🔥 ERROR GLOBAL HANDLER
 // =============================
-
 app.use((err, req, res, next) => {
-  console.error(err); // Registrar el error en la consola para la depuración
+  
 
   res.status(500).json({
     message: "Error interno del servidor"

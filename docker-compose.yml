@@ -9,7 +9,7 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: "postgresql://erp_user:Erp123456!@erp_postgres:5432/erp_saas"
-      VITE_API_URL: "https://apigymcloud.apus-security.com"
+      VITE_API_URL: "https://144.126.150.74.com"
       SECRET_KEY: "mysecretkey"
     networks:
       - backend-network
@@ -27,5 +27,5 @@ services:
       - backend-network
 
 networks:
-  backend-network:
+  default: 
     driver: bridge
