@@ -4,7 +4,7 @@ services:
     image: erp_backend
     build: .
     ports:
-      - "443:3000"  # Exponer el puerto 3000 para el backend
+      - "3000:3000"  # Exponer el puerto 3000 para el backend
     environment:
       DATABASE_URL: "postgresql://erp_user:Erp123456!@erp_postgres:5432/erp_saas?schema=public"  # Cambiar para usar el contenedor de PostgreSQL
       VITE_API_URL: "https://144.126.150.74:3000"  # Dirección de la API
