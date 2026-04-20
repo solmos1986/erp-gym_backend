@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import https from 'https';
 
 // =============================
 // 📦 IMPORTS DE RUTAS
@@ -22,7 +21,7 @@ import { WebSocketServer } from 'ws';
 import { sendCommandToAgent } from './lib/websocket.server.js';
 
 const app = express();
-startMembershipExpirationJob();
+
 // =============================
 // 🔥 MIDDLEWARES GLOBALES
 // =============================
@@ -31,6 +30,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true // Si estás utilizando cookies o sesiones
 }));
+startMembershipExpirationJob();
 app.use(express.json());
 
 // 🔥🔥🔥 IMPORTANTE (SERVIR IMÁGENES)
