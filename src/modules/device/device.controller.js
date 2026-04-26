@@ -102,11 +102,11 @@ export const getDevices = async (req, res) => {
       },
       include: {
         branch: true
-        // commands: {
-        //   where: {
-        //     status: "PROCESSING"
-        //   }
-        // }
+         commands: {
+           where: {
+             status: "PROCESSING"
+           }
+         }
       },
       orderBy: {
         createdAt: "desc"
