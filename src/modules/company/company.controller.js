@@ -77,7 +77,7 @@ export const registerCompany = async (req, res) => {
               data: {
                 name: `Agent - ${branch.name}`, // 🔥 EXTRA PRO
                 agentKey,
-                companyId,
+                companyId: company.id,
                 branchId: branch.id,
               },
             });
