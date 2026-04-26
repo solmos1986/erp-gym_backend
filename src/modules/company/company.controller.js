@@ -65,7 +65,7 @@ export const registerCompany = async (req, res) => {
       // ========================
       const branch = await tx.branch.create({
         data: {
-          name: "Principalita",
+          name: "Principal",
           companyId: company.id
         }
       });
