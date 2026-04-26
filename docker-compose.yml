@@ -10,6 +10,8 @@ services:
       VITE_API_URL: "https://144.126.150.74:3000"  # Dirección de la API
       JWT_SECRET:   supersecret123
       BASE_URL: https://apigymcloud.aplus-security.com
+    volumes:
+    - /www/uploads:/app/uploads
     depends_on:
       - postgres  # Asegúrate de que el backend dependa de PostgreSQL
     networks:
