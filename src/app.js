@@ -65,7 +65,7 @@ app.use("/commands", commandRoutes);
 app.use("/agent", agentRoutes);
 
 // Iniciar el servidor WebSocket
-const wss = new WebSocketServer({ port: 8080 });
+//const wss = new WebSocketServer({ port: 8080 });
 
 
 // =============================
