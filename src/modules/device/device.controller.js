@@ -114,7 +114,7 @@ export const getDevices = async (req, res) => {
     });
 
     // 🔥 LÓGICA DE ESTADO (AQUÍ MISMO)
-    const HEARTBEAT_TIMEOUT = 450000; // 45s
+    const HEARTBEAT_TIMEOUT = 600000; // 45s
     const now = new Date();
 
     const mapped = devices.map(d => {
