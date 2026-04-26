@@ -101,12 +101,12 @@ export const getDevices = async (req, res) => {
         ...(branchId && { branchId })
       },
       include: {
-        branch: true,
-         commands: {
-           where: {
-             status: "PROCESSING"
-           }
-         }
+        branch: true
+         //commands: {
+         //  where: {
+          //   status: "PROCESSING"
+         //  }
+         //}
       },
       orderBy: {
         createdAt: "desc"
@@ -127,9 +127,9 @@ export const getDevices = async (req, res) => {
         status = "ONLINE";
 
         // 🟠 si está ejecutando algo
-        if (d.commands.length > 0) {
-          status = "BUSY";
-        }
+        //if (d.commands.length > 0) {
+         // status = "BUSY";
+        //}
 
         // 🔴 si agent dice desconectado
         if (d.status === "DISCONNECTED") {
