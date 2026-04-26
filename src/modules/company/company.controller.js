@@ -69,6 +69,18 @@ export const registerCompany = async (req, res) => {
           companyId: company.id
         }
       });
+      // 2️⃣ Generar agentKey seguro
+            const agentKey = crypto.randomBytes(32).toString("hex");
+      
+            // 3️⃣ Crear Agent automático
+            const agent = await tx.agent.create({
+              data: {
+                name: `Agent - ${branch.name}`, // 🔥 EXTRA PRO
+                agentKey,
+                companyId,
+                branchId: branch.id,
+              },
+            });
 
       // ========================
       // CREAR ROLE OWNER
