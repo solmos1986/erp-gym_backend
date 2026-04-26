@@ -101,7 +101,7 @@ export const getDevices = async (req, res) => {
         ...(branchId && { branchId })
       },
       include: {
-        branch: true
+        branch: true,
          commands: {
            where: {
              status: "PROCESSING"
