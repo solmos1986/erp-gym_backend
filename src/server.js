@@ -14,20 +14,6 @@ const PORT = 3000;
 // Crear servidor HTTP
 const server = createServer(app);
 
-// 🔥 WebSocket en el MISMO servidor
-const wss = new WebSocketServer({ server });
-
-wss.on("connection", (ws, req) => {
-  console.log("🔌 Agent conectado");
-
-  ws.on("message", (msg) => {
-    console.log("📩 Mensaje:", msg.toString());
-  });
-
-  ws.on("close", () => {
-    console.log("❌ Agent desconectado");
-  });
-});
 
 // Levantar TODO junto
 server.listen(PORT, "0.0.0.0", () => {
