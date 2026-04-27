@@ -19,7 +19,8 @@ import agentRoutes from "./modules/agent/agent.routes.js";
 import { startMembershipExpirationJob } from './jobs/membershipsExpiration.job.js';
 import { WebSocketServer } from 'ws';
 import { sendCommandToAgent } from './lib/websocket.server.js';
-
+// 🔥 ESTA LÍNEA ES LA CLAVE
+import './lib/websocket.server.js';
 const app = express();
 
 // =============================
