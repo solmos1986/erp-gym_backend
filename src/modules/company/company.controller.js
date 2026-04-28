@@ -170,7 +170,12 @@ export const getCompanies = async (req, res) => {
   try {
     const companies = await prisma.company.findMany({
       include: {
-        companyPermissions: true
+        companyPermissions: true,
+        branches: {
+          include: {
+            agent: true // 🔥 opcional pero recomendado
+          }
+        }
       }
     });
 
