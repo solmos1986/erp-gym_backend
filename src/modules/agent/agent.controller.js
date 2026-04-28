@@ -95,10 +95,6 @@ export const agentHeartbeat = async (req, res) => {
 //========================
 // AGENT DOWNLOAD
 //=============================
-import archiver from "archiver";
-import fs from "fs";
-import { prisma } from "../../config/prisma.js";
-
 export async function downloadAgent(req, res) {
   try {
     const { companyId, branchId } = req.params;
