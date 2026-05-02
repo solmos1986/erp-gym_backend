@@ -22,10 +22,14 @@ router.post("/heartbeat", agentAuth, agentHeartbeat);
 router.get("/commands", agentAuth, getAgentCommands);
 router.post("/commands/:id/complete", agentAuth, completeCommand);
 
+// router.get(
+//   "/download/:companyId/:branchId",
+//   requireAuth, // 🔥 PROTECCIÓN
+//   downloadAgent
+// );
 router.get(
-  "/download/:companyId/:branchId",
+  "/download/:branchId",
   requireAuth, // 🔥 PROTECCIÓN
   downloadAgent
 );
-
 export default router;

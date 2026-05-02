@@ -95,22 +95,107 @@ export const agentHeartbeat = async (req, res) => {
 //========================
 // AGENT DOWNLOAD
 //=============================
+// export async function downloadAgent(req, res) {
+//   try {
+//     const { companyId, branchId } = req.params;
+
+//     🔐 Validar usuario
+//     if (req.user.companyId !== companyId) {
+//       return res.status(403).json({
+//         message: "No autorizado"
+//       });
+//     }
+
+//     🔥 BUSCAR EL AGENT REAL
+//     const agent = await prisma.agent.findFirst({
+//       where: {
+//         companyId,
+//         branchId,
+//         isActive: true
+//       }
+//     });
+
+//     if (!agent) {
+//       return res.status(404).json({
+//         message: "Agent no encontrado"
+//       });
+//     }
+
+//     📦 Ruta del exe (Docker)
+//     const agentPath = "/app/uploads/agent/agent.exe";
+
+//     if (!fs.existsSync(agentPath)) {
+//       return res.status(404).json({
+//         message: "Agent.exe no encontrado"
+//       });
+//     }
+
+//     🔥 CONFIG REAL
+//     const config = {
+//       WEBSOCKET_URL: "wss://apigymcloud.aplus-security.com/ws/",
+//       AGENT_KEY: agent.agentKey, // ✅ CLAVE
+//       COMPANY_ID: companyId,
+//       BRANCH_ID: branchId
+//     };
+
+//     res.setHeader("Content-Type", "application/zip");
+//     res.setHeader(
+//       "Content-Disposition",
+//       `attachment; filename=agent-${companyId}.zip`
+//     );
+
+//     const archive = archiver("zip", {
+//       zlib: { level: 0 } // 🔥 rápido
+//     });
+
+//     archive.pipe(res);
+
+//     archive.file(agentPath, { name: "agent.exe" });
+
+//     archive.append(JSON.stringify(config, null, 2), {
+//       name: "config.local.json"
+//     });
+
+//     await archive.finalize();
+
+//   } catch (error) {
+//     console.error("❌ Error descargando agent:", error);
+
+//     res.status(500).json({
+//       message: "Error generando el agent"
+//     });
+//   }
+// }
 export async function downloadAgent(req, res) {
   try {
-    const { companyId, branchId } = req.params;
+    const { branchId } = req.params;
 
-    // 🔐 Validar usuario
-    if (req.user.companyId !== companyId) {
-      return res.status(403).json({
-        message: "No autorizado"
+    // 🔎 1. Buscar la sucursal real
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId }
+    });
+
+    if (!branch) {
+      return res.status(404).json({
+        message: "Sucursal no existe"
       });
     }
 
-    // 🔥 BUSCAR EL AGENT REAL
+    // 🔐 2. Validar acceso
+    const isSystemAdmin = req.user.systemRoles?.includes('SYSTEM_ADMIN');
+
+    if (!isSystemAdmin) {
+      if (req.user.companyId !== branch.companyId) {
+        return res.status(403).json({
+          message: "No autorizado"
+        });
+      }
+    }
+
+    // 🔥 3. Buscar el agent REAL
     const agent = await prisma.agent.findFirst({
       where: {
-        companyId,
-        branchId,
+        branchId: branch.id,
         isActive: true
       }
     });
@@ -121,7 +206,7 @@ export async function downloadAgent(req, res) {
       });
     }
 
-    // 📦 Ruta del exe (Docker)
+    // 📦 Ruta del exe
     const agentPath = "/app/uploads/agent/agent.exe";
 
     if (!fs.existsSync(agentPath)) {
@@ -130,22 +215,22 @@ export async function downloadAgent(req, res) {
       });
     }
 
-    // 🔥 CONFIG REAL
+    // 🔥 4. Configuración real
     const config = {
       WEBSOCKET_URL: "wss://apigymcloud.aplus-security.com/ws/",
-      AGENT_KEY: agent.agentKey, // ✅ CLAVE
-      COMPANY_ID: companyId,
-      BRANCH_ID: branchId
+      AGENT_KEY: agent.agentKey,
+      COMPANY_ID: branch.companyId, // 🔥 desde DB
+      BRANCH_ID: branch.id
     };
 
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=agent-${companyId}.zip`
+      `attachment; filename=agent-${branch.companyId}.zip`
     );
 
     const archive = archiver("zip", {
-      zlib: { level: 0 } // 🔥 rápido
+      zlib: { level: 0 }
     });
 
     archive.pipe(res);
