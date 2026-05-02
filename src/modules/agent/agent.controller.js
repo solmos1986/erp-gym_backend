@@ -164,15 +164,15 @@ export async function downloadAgent(req, res) {
 
 export async function downloadAgentExe(req, res) {
   try {
-    const agentPath = "/app/uploads/agent/agent.zip";
+    const agentPath = "/app/uploads/agent/agent.rar";
 
     if (!fs.existsSync(agentPath)) {
       return res.status(404).json({
-        message: "Agent.exe no encontrado"
+        message: "Agent.rar no encontrado"
       });
     }
 
-    res.download(agentPath, "agent.exe");
+    res.download(agentPath, "agent.rar");
 
   } catch (error) {
     res.status(500).json({
