@@ -40,7 +40,7 @@ export const getMemberships = async (req, res) => {
     
 
     res.status(500).json({
-      message: "Error obteniendo membresías"
+      message: error.message ||"Error obteniendo membresías"
     });
   }
 };
