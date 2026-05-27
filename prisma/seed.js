@@ -384,7 +384,30 @@ const systemBranch = await prisma.branch.upsert({
   }
 
   
+  const companyPlan = await prisma.companyPlan.createMany({
 
+   data:[
+
+      {
+         name:"Basic",
+         monthlyPrice:50
+      },
+
+      {
+         name:"Pro",
+         monthlyPrice:80
+      },
+
+      {
+         name:"Enterprise",
+         monthlyPrice:120
+      }
+
+   ],
+
+   skipDuplicates:true
+
+});
   
 }
 

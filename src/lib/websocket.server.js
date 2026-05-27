@@ -104,8 +104,9 @@ export function sendCommandToAgent({
 // ==========================
 // 🖥️ FRONTEND (nuevo)
 // ==========================
-export function notifyFrontend(event) {
-  for (const ws of frontends) {
-    ws.send(JSON.stringify(event));
-  }
+export function notifyFrontend(event){
+for(const ws of frontends){
+if(ws.readyState === 1){
+  ws.send(JSON.stringify(event));
+}}
 }

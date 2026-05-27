@@ -11,6 +11,7 @@ datasource db {
 model Company {
   id                  String               @id @default(uuid())
   name                String               @unique
+  planId              String?
   isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -27,6 +28,10 @@ model Company {
   role                Role[]
   users               User[]
   userRoles           UserRole[]
+  plan CompanyPlan? @relation(
+    fields:[planId],
+    references:[id]
+  )
 }
 
 model User {
@@ -279,6 +284,23 @@ model Command {
   @@index([status])
   @@index([branchId, status])
   @@index([membershipSaleId])
+}
+model CompanyPlan {
+
+  id String @id @default(uuid())
+
+  name String
+
+  monthlyPrice Decimal @db.Decimal(10,2)
+
+  active Boolean @default(true)
+
+  companies Company[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
 }
 
 enum RoleScope {

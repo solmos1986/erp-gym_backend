@@ -1,9 +1,55 @@
 import { PrismaClient } from "@prisma/client";
 import { applyTenantFilter } from "../../utils/tenant.util.js";
 import { sendCommandToAgent, notifyFrontend } from '../../lib/websocket.server.js';
+import XLSX from "xlsx";
+
 
 const prisma = new PrismaClient();
+const parseExcelDate = (value)=>{
+// Excel serial
+if(
+typeof value === "number"
+){
 
+const utcDays =
+Math.floor(
+value - 25569
+);
+
+const date =
+new Date(
+utcDays *
+86400 *
+1000
+);
+
+return new Date(
+
+date.getUTCFullYear(),
+
+date.getUTCMonth(),
+date.getUTCDate()
+);
+}
+// Texto YYYY-MM-DD
+if(typeof value === "string"){
+const [year,month,day] = value.split("-").map(Number);
+return new Date(year,month - 1,day);
+}
+return null;
+};
+
+const startOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  return d;
+};
+
+const endOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(23,59,59,999);
+  return d;
+};
 // =========================
 // ➕ CREAR PARTNER
 // =========================
@@ -471,3 +517,96 @@ export const activatePartner = async (req, res) => {
     });
   }
 };
+// =========================
+// IMPORTAR CLIENTES EXCEL
+// =========================
+export const importPartnersFromExcel = async(req, res)=>{
+
+try{
+
+  const workbook =XLSX.readFile(req.file.path);
+  const sheet =workbook.Sheets[workbook.SheetNames[0]];
+  const rows =XLSX.utils.sheet_to_json(sheet);
+
+  let imported = 0;
+  let skipped = 0;
+  let memberships = 0;
+
+  for(const row of rows){
+
+  if(!row.Nombre){
+    skipped++;
+    continue;
+    }
+
+  const document = row.Documento ? String(row.Documento) : null;
+
+  let partner = await prisma.partner.findFirst({
+    where:{
+    companyId:req.user.companyId,
+    document
+    }
+  });
+
+  if(!partner){
+  partner = await prisma.partner.create({
+    data:{
+    companyId:req.user.companyId,
+    type: "CUSTOMER",
+    name: row.Nombre,
+    document,
+    phone: row.Telefono ? String(row.Telefono):null,
+    email: row.Email ??null,
+    address:row.Direccion ??null
+    }
+  });
+  imported++;
+  }
+  else{
+    skipped++;
+  }
+
+  if(row.FechaInicio && row.FechaFin){
+    await prisma.customerMembership.upsert({
+      where:{
+        customerId:
+        partner.id
+        },
+        update:{
+          startDate:startOfDay(parseExcelDate(row.FechaInicio)),
+          endDate:endOfDay(parseExcelDate(row.FechaFin)),
+          status:"ACTIVE",
+          branchId:req.user.branchId
+        },
+        create:{
+        customerId:partner.id,
+        companyId:req.user.companyId,
+        branchId:req.user.branchId,
+        startDate:startOfDay(parseExcelDate(row.FechaInicio)),
+        endDate:endOfDay(parseExcelDate(row.FechaFin)),
+        status:"ACTIVE"
+        }
+    });
+    memberships++;
+    }}
+    notifyFrontend({
+    type:
+    "MIGRATION_IMPORT"
+    });
+    return res.json({
+    ok:true,
+    total:rows.length,
+    imported,
+    skipped,
+    memberships
+    });
+
+}
+catch(error){
+  console.error(error);
+  return res.status(500).json({
+  ok:false,
+  message:
+  error.message
+  });
+}};
