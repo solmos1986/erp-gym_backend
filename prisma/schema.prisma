@@ -11,7 +11,6 @@ datasource db {
 model Company {
   id                  String               @id @default(uuid())
   name                String               @unique
-  planId              String?
   isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -177,45 +176,8 @@ model Device {
 
 /// //////////////
 /// ///////////////
-model Plan {
-  id              String           @id @default(uuid())
-  name            String
-  description     String?
-  price           Decimal
-  durationDays    Int
-  isActive        Boolean          @default(true)
-  companyId       String
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  membershipSales MembershipSale[]
-  company         Company          @relation(fields: [companyId], references: [id])
 
-  @@unique([name, companyId])
-}
 
-model MembershipSale {
-  id        String           @id @default(uuid())
-  partnerId String
-  planId    String
-  companyId String
-  startDate DateTime
-  endDate   DateTime
-  status    MembershipStatus @default(ACTIVE)
-  price     Decimal          @db.Decimal(10, 2)
-  createdAt DateTime         @default(now())
-  saleDate  DateTime         @default(now())
-  userId    String?
-  branchId  String?
-  commands  Command[]
-  branch    Branch?          @relation(fields: [branchId], references: [id])
-  company   Company          @relation(fields: [companyId], references: [id])
-  partner   Partner          @relation(fields: [partnerId], references: [id])
-  plan      Plan             @relation(fields: [planId], references: [id])
-  user      User?            @relation(fields: [userId], references: [id])
-
-  @@index([partnerId])
-  @@index([endDate])
-}
 
 model CustomerMembership {
   id                String           @id @default(uuid())
