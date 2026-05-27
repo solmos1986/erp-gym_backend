@@ -11,7 +11,7 @@ datasource db {
 model Company {
   id                  String               @id @default(uuid())
   name                String               @unique
-  planId              String?
+ 
   isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
