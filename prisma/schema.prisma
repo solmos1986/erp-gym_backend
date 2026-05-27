@@ -24,14 +24,11 @@ model Company {
   devices             Device[]
   membershipSales     MembershipSale[]
   partners            Partner[]
-  plan                Plan[]
+ 
   role                Role[]
   users               User[]
   userRoles           UserRole[]
-  plan CompanyPlan? @relation(
-    fields:[planId],
-    references:[id]
-  )
+ 
 }
 
 model User {
@@ -284,23 +281,6 @@ model Command {
   @@index([status])
   @@index([branchId, status])
   @@index([membershipSaleId])
-}
-model CompanyPlan {
-
-  id String @id @default(uuid())
-
-  name String
-
-  monthlyPrice Decimal @db.Decimal(10,2)
-
-  active Boolean @default(true)
-
-  companies Company[]
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
 }
 
 enum RoleScope {
