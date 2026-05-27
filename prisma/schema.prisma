@@ -24,7 +24,7 @@ model Company {
   devices             Device[]
   membershipSales     MembershipSale[]
   partners            Partner[]
- 
+  plans               Plan[]
   role                Role[]
   users               User[]
   userRoles           UserRole[]
