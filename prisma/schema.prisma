@@ -176,7 +176,21 @@ model Device {
 
 /// //////////////
 /// ///////////////
+model Plan {
+  id              String           @id @default(uuid())
+  name            String
+  description     String?
+  price           Decimal
+  durationDays    Int
+  isActive        Boolean          @default(true)
+  companyId       String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  membershipSales MembershipSale[]
+  company         Company          @relation(fields: [companyId], references: [id])
 
+  @@unique([name, companyId])
+}
 
 model MembershipSale {
   id        String           @id @default(uuid())
