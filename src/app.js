@@ -18,6 +18,8 @@ import deviceRoutes from "./modules/device/device.routes.js";
 import agentRoutes from "./modules/agent/agent.routes.js";
 import { startMembershipExpirationJob } from './jobs/membershipsExpiration.job.js';
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
+import productCategoryRoutes from "./modules/productCategory/productCategory.routes.js";
+import productRoutes from "./modules/product/product.routes.js";
 
 const app = express();
 
@@ -69,6 +71,11 @@ app.use("/dashboard", dashboardRoutes);
 // Iniciar el servidor WebSocket
 //const wss = new WebSocketServer({ port: 8080 });
 
+// CATEGORÍAS DE PRODUCTOS
+app.use("/product-categories", productCategoryRoutes);
+
+// PRODUCTOS
+app.use("/products", productRoutes);
 
 // =============================
 // 🧪 HEALTH CHECK

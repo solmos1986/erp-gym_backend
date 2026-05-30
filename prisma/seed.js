@@ -265,8 +265,47 @@ for (const role of roles) {
     { code: 'TENANT_DASHBOARD_VIEW', 
       description: 'Ver dashboard', 
       scope: 'TENANT' 
-    }
-
+    },
+    {
+      code: "TENANT_PRODUCT_CATEGORIES_VIEW",
+      description: "Ver categorías de productos",
+      scope: "TENANT",
+    },
+    {
+      code: "TENANT_PRODUCT_CATEGORIES_CREATE",
+      description: "Crear categorías de productos",
+      scope: "TENANT",
+    },
+    {
+      code: "TENANT_PRODUCT_CATEGORIES_EDIT",
+      description: "Editar categorías de productos",
+      scope: "TENANT",
+    },
+    {
+      code: "TENANT_PRODUCT_CATEGORIES_DELETE",
+      description: "Eliminar categorías de productos",
+      scope: "TENANT",
+    },
+    {
+      code: "TENANT_PRODUCTS_VIEW",
+      description: "Ver productos",
+      scope: "TENANT",
+    },
+    {
+      code: "TENANT_PRODUCTS_CREATE",
+      description: "Crear productos",
+      scope: "TENANT",
+    },
+    {
+      code: "TENANT_PRODUCTS_EDIT",
+      description: "Editar productos",
+      scope: "TENANT",
+    },
+    {
+      code: "TENANT_PRODUCTS_DELETE",
+      description: "Eliminar productos",
+      scope: "TENANT",
+    },
   ];
 
   for (const perm of tenantPermissions) {
@@ -384,36 +423,16 @@ const systemBranch = await prisma.branch.upsert({
   }
 
   
-  const companyPlan = await prisma.companyPlan.createMany({
-
-   data:[
-
-      {
-         name:"Basic",
-         monthlyPrice:50
-      },
-
-      {
-         name:"Pro",
-         monthlyPrice:80
-      },
-
-      {
-         name:"Enterprise",
-         monthlyPrice:120
-      }
-
-   ],
-
-   skipDuplicates:true
-
-});
+  
   
 }
 
 main()
+  .then(() => {
+    console.log("✅ Seed ejecutado correctamente");
+  })
   .catch((e) => {
-    
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

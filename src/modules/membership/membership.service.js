@@ -179,7 +179,7 @@ export const getAll = async (req) => {
   const { companyId } = req.user;
 
   const { search, planId, userId, status, from, to } = req.query;
-
+  console.log({ search, planId, userId, status, from, to });
   const where = {
     companyId
   };
@@ -222,25 +222,13 @@ export const getAll = async (req) => {
   // 🟢 Estado
   const now = new Date();
 
-  if (status === 'ACTIVE') {
-     where.status = 'ACTIVE';
-  }
-
-  if (status === 'EXPIRED') {
-
-   where.status = 'ACTIVE';
-
-   where.endDate = {
-      lt: now
-   };
-
-}
-
-  if (status === 'ANNULLED') {
-
-   where.status =
-      'ANNULLED';
-
+  // 🟢 Estado
+if (status) {
+  where.status = status;
+} else {
+  where.status = {
+    in: ['ACTIVE', 'EXPIRED']
+  };
 }
 
   return await prisma.membershipSale.findMany({

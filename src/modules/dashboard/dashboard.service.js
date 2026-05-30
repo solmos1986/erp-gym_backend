@@ -91,6 +91,9 @@ endOfDay.setUTCHours(
       where: {
         companyId,
         branchId,
+        status: {
+    not: "ANNULLED"
+  },
         saleDate: {
           gte: startOfDay,
           lte: endOfDay
@@ -109,6 +112,9 @@ endOfDay.setUTCHours(
       where: {
         companyId,
         branchId,
+        status: {
+    not: "ANNULLED"
+  },
         saleDate: {
           gte: startOfWeek
         }
@@ -126,6 +132,9 @@ endOfDay.setUTCHours(
       where: {
         companyId,
         branchId,
+        status: {
+    not: "ANNULLED"
+  },
         saleDate: {
           gte: startOfMonth
         }
@@ -140,7 +149,9 @@ endOfDay.setUTCHours(
       where: {
         companyId,
         branchId,
-        status: "ACTIVE",
+        status: {
+    not: "ANNULLED"
+  },
         startDate: {
           lte: today
         },
@@ -164,7 +175,9 @@ endOfDay.setUTCHours(
       where: {
         companyId,
         branchId,
-        status: "ACTIVE",
+        status: {
+    not: "ANNULLED"
+  },
         endDate: {
           gte: today,
           lte: next3Days
@@ -180,6 +193,9 @@ endOfDay.setUTCHours(
       where: {
         companyId,
         branchId,
+        status: {
+    not: "ANNULLED"
+  },
         saleDate: {
           gte: startOfDay,
           lte: endOfDay
@@ -195,6 +211,9 @@ endOfDay.setUTCHours(
       where: {
         companyId,
         branchId,
+        status: {
+    not: "ANNULLED"
+  },
         saleDate: {
           gte: startOfWeek
         }
@@ -209,6 +228,9 @@ endOfDay.setUTCHours(
       where: {
         companyId,
         branchId,
+        status: {
+    not: "ANNULLED"
+  },
         saleDate: {
           gte: startOfMonth
         }
@@ -276,6 +298,9 @@ export const getSalesLast7Days = async ({
       where: {
         companyId,
         branchId,
+        status: {
+    not: "ANNULLED"
+  },
         saleDate: {
           gte: startDate
         }
@@ -363,7 +388,9 @@ async ({
       where: {
         companyId,
         branchId,
-
+        status: {
+    not: "ANNULLED"
+  },
         saleDate: {
           gte:
             previousStart
@@ -497,7 +524,8 @@ async ({
 
       where: {
         companyId,
-        branchId
+        branchId,
+        status: "ACTIVE"
       }
 
     });

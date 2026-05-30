@@ -92,7 +92,8 @@ export const getPlans = async (req, res) => {
     
 
     res.status(500).json({
-      message: "Error obteniendo planes"
+      message: "Error obteniendo planes",
+      error: error.message
     });
   }
 };
@@ -123,7 +124,8 @@ export const getPlanById = async (req, res) => {
     
 
     res.status(500).json({
-      message: "Error obteniendo plan"
+      message: "Error obteniendo plan",
+      error: error.message
     });
   }
 };
@@ -185,7 +187,8 @@ export const updatePlan = async (req, res) => {
     
 
     res.status(500).json({
-      message: "Error actualizando plan"
+      message: "Error actualizando plan",
+      error: error.message
     });
   }
 };
@@ -230,7 +233,8 @@ export const deletePlan = async (req, res) => {
     
 
     res.status(500).json({
-      message: error.message
+      message: "Error desactivando plan",
+      error: error.message
     });
   }
 };
@@ -249,6 +253,6 @@ export const activatePlan = async (req, res) => {
     res.json({ success: true });
 
   } catch (error) {
-    res.status(500).json({ message: 'Error activating plan' });
+    res.status(500).json({ message: 'Error activating plan', error: error.message });
   }
 };
