@@ -28,6 +28,9 @@ model Company {
   role                Role[]
   users               User[]
   userRoles           UserRole[]
+  products            Product[]
+  productCategories   ProductCategory[]
+  inventoryMovements  InventoryMovement[]
  
 }
 
@@ -123,8 +126,11 @@ model Branch {
   devices         Device[]
   membershipSales MembershipSale[]
   users           User[]
+  products            Product[]
+  inventoryMovements  InventoryMovement[]
 
   @@unique([name, companyId])
+  
 }
 
 /// ////////////
@@ -283,6 +289,84 @@ model Command {
   @@index([membershipSaleId])
 }
 
+model Product {
+  id                String   @id @default(uuid())
+
+  companyId         String
+  branchId          String?
+
+  productCategoryId String?
+
+  code              String?
+  name              String
+  description       String?
+
+  costPrice         Decimal? @db.Decimal(10,2)
+  salePrice         Decimal  @db.Decimal(10,2)
+
+  isActive          Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           Company @relation(fields: [companyId], references: [id])
+  branch            Branch? @relation(fields: [branchId], references: [id])
+
+  category          ProductCategory? @relation(fields: [productCategoryId], references: [id])
+
+  inventoryMovements InventoryMovement[]
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([productCategoryId])
+}
+
+model ProductCategory {
+  id          String   @id @default(uuid())
+  companyId   String
+
+  name        String
+  description String?
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id])
+
+  products    Product[]
+
+  @@index([companyId])
+}
+
+model InventoryMovement {
+  id          String   @id @default(uuid())
+
+  companyId   String
+  branchId    String
+
+  productId   String
+
+  type        InventoryMovementType
+
+  quantity    Decimal  @db.Decimal(10,2)
+
+  notes       String?
+
+  createdAt   DateTime @default(now())
+
+  company     Company @relation(fields: [companyId], references: [id])
+  branch      Branch  @relation(fields: [branchId], references: [id])
+
+  product     Product @relation(fields: [productId], references: [id])
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([productId])
+}
+
+
 enum RoleScope {
   SYSTEM
   TENANT
@@ -322,4 +406,12 @@ enum CommandType {
   DELETE_USER
   SYNC_FACE
   SYNC_USER_FULL
+}
+
+enum InventoryMovementType {
+  INITIAL_STOCK
+  PURCHASE
+  SALE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
 }
