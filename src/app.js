@@ -20,6 +20,7 @@ import { startMembershipExpirationJob } from './jobs/membershipsExpiration.job.j
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import productCategoryRoutes from "./modules/productCategory/productCategory.routes.js";
 import productRoutes from "./modules/product/product.routes.js";
+import inventoryMovementRoutes from "./modules/inventoryMovement/inventoryMovement.routes.js";
 
 const app = express();
 
@@ -76,6 +77,9 @@ app.use("/product-categories", productCategoryRoutes);
 
 // PRODUCTOS
 app.use("/products", productRoutes);
+
+// MOVIMIENTOS DE INVENTARIO
+app.use("/inventory-movements", inventoryMovementRoutes);
 
 // =============================
 // 🧪 HEALTH CHECK

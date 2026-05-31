@@ -9,9 +9,9 @@ datasource db {
 }
 
 model Company {
-  id                  String               @id @default(uuid())
-  name                String               @unique
- 
+  id   String @id @default(uuid())
+  name String @unique
+
   isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -31,24 +31,24 @@ model Company {
   products            Product[]
   productCategories   ProductCategory[]
   inventoryMovements  InventoryMovement[]
- 
 }
 
 model User {
-  id              String           @id @default(uuid())
-  email           String           @unique
-  password        String
-  fullName        String
-  isActive        Boolean          @default(true)
-  companyId       String
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  branchId        String
-  isOwner         Boolean          @default(false)
-  membershipSales MembershipSale[]
-  branch          Branch           @relation(fields: [branchId], references: [id])
-  company         Company          @relation(fields: [companyId], references: [id])
-  roles           UserRole[]
+  id                        String              @id @default(uuid())
+  email                     String              @unique
+  password                  String
+  fullName                  String
+  isActive                  Boolean             @default(true)
+  companyId                 String
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  branchId                  String
+  isOwner                   Boolean             @default(false)
+  membershipSales           MembershipSale[]
+  branch                    Branch              @relation(fields: [branchId], references: [id])
+  company                   Company             @relation(fields: [companyId], references: [id])
+  roles                     UserRole[]
+  inventoryMovementsCreated InventoryMovement[] @relation("InventoryMovementCreatedBy")
 
   @@index([companyId])
   @@index([branchId])
@@ -114,23 +114,22 @@ model UserRole {
 }
 
 model Branch {
-  id              String               @id @default(uuid())
-  name            String
-  companyId       String
-  isActive        Boolean              @default(true)
-  createdAt       DateTime             @default(now())
-  agents          Agent[]              @relation("BranchAgents")
-  company         Company              @relation(fields: [companyId], references: [id])
-  commands        Command[]
-  memberships     CustomerMembership[]
-  devices         Device[]
-  membershipSales MembershipSale[]
-  users           User[]
-  products            Product[]
-  inventoryMovements  InventoryMovement[]
+  id                 String               @id @default(uuid())
+  name               String
+  companyId          String
+  isActive           Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  agents             Agent[]              @relation("BranchAgents")
+  company            Company              @relation(fields: [companyId], references: [id])
+  commands           Command[]
+  memberships        CustomerMembership[]
+  devices            Device[]
+  membershipSales    MembershipSale[]
+  users              User[]
+  products           Product[]
+  inventoryMovements InventoryMovement[]
 
   @@unique([name, companyId])
-  
 }
 
 /// ////////////
@@ -290,29 +289,29 @@ model Command {
 }
 
 model Product {
-  id                String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  companyId         String
-  branchId          String?
+  companyId String
+  branchId  String?
 
   productCategoryId String?
 
-  code              String?
-  name              String
-  description       String?
+  code        String?
+  name        String
+  description String?
 
-  costPrice         Decimal? @db.Decimal(10,2)
-  salePrice         Decimal  @db.Decimal(10,2)
+  costPrice Decimal? @db.Decimal(10, 2)
+  salePrice Decimal  @db.Decimal(10, 2)
 
-  isActive          Boolean  @default(true)
+  isActive Boolean @default(true)
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  company           Company @relation(fields: [companyId], references: [id])
-  branch            Branch? @relation(fields: [branchId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
 
-  category          ProductCategory? @relation(fields: [productCategoryId], references: [id])
+  category ProductCategory? @relation(fields: [productCategoryId], references: [id])
 
   inventoryMovements InventoryMovement[]
 
@@ -322,50 +321,53 @@ model Product {
 }
 
 model ProductCategory {
-  id          String   @id @default(uuid())
-  companyId   String
+  id        String @id @default(uuid())
+  companyId String
 
   name        String
   description String?
 
-  isActive    Boolean  @default(true)
+  isActive Boolean @default(true)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  company     Company  @relation(fields: [companyId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
 
-  products    Product[]
+  products Product[]
 
   @@index([companyId])
 }
 
 model InventoryMovement {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  companyId   String
-  branchId    String
+  companyId String
+  branchId  String
 
-  productId   String
+  productId String
 
-  type        InventoryMovementType
+  movementType InventoryMovementType
 
-  quantity    Decimal  @db.Decimal(10,2)
+  quantity Decimal @db.Decimal(10, 2)
 
-  notes       String?
+  notes String?
 
-  createdAt   DateTime @default(now())
+  createdById String?
 
-  company     Company @relation(fields: [companyId], references: [id])
-  branch      Branch  @relation(fields: [branchId], references: [id])
+  createdAt DateTime @default(now())
 
-  product     Product @relation(fields: [productId], references: [id])
+  company   Company @relation(fields: [companyId], references: [id])
+  branch    Branch  @relation(fields: [branchId], references: [id])
+  createdBy User?   @relation("InventoryMovementCreatedBy", fields: [createdById], references: [id])
+
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([companyId])
   @@index([branchId])
   @@index([productId])
+  @@index([createdAt])
 }
-
 
 enum RoleScope {
   SYSTEM
@@ -414,4 +416,6 @@ enum InventoryMovementType {
   SALE
   ADJUSTMENT_IN
   ADJUSTMENT_OUT
+  TRANSFER_IN
+  TRANSFER_OUT
 }

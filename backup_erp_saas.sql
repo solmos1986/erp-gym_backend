@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict xDBdtxVS1elpxBmzZCfJX7Y8rFiSEMP08pKoGZ4deF4t9RTNSMCP4VNgQheNKnN
+\restrict Oq9OkX0e2UZD7hvAteDd3BrtWf2qG54w7oLmipHhJsmx1yp6rPfZUChdBwfqOl2
 
 -- Dumped from database version 15.17 (Debian 15.17-1.pgdg13+1)
 -- Dumped by pg_dump version 15.17 (Debian 15.17-1.pgdg13+1)
@@ -86,6 +86,21 @@ CREATE TYPE public."DeviceType" AS ENUM (
 
 
 ALTER TYPE public."DeviceType" OWNER TO erp_user;
+
+--
+-- Name: InventoryMovementType; Type: TYPE; Schema: public; Owner: erp_user
+--
+
+CREATE TYPE public."InventoryMovementType" AS ENUM (
+    'INITIAL_STOCK',
+    'PURCHASE',
+    'SALE',
+    'ADJUSTMENT_IN',
+    'ADJUSTMENT_OUT'
+);
+
+
+ALTER TYPE public."InventoryMovementType" OWNER TO erp_user;
 
 --
 -- Name: MembershipStatus; Type: TYPE; Schema: public; Owner: erp_user
@@ -264,6 +279,24 @@ CREATE TABLE public."Device" (
 ALTER TABLE public."Device" OWNER TO erp_user;
 
 --
+-- Name: InventoryMovement; Type: TABLE; Schema: public; Owner: erp_user
+--
+
+CREATE TABLE public."InventoryMovement" (
+    id text NOT NULL,
+    "companyId" text NOT NULL,
+    "branchId" text NOT NULL,
+    "productId" text NOT NULL,
+    type public."InventoryMovementType" NOT NULL,
+    quantity numeric(10,2) NOT NULL,
+    notes text,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public."InventoryMovement" OWNER TO erp_user;
+
+--
 -- Name: MembershipSale; Type: TABLE; Schema: public; Owner: erp_user
 --
 
@@ -339,6 +372,45 @@ CREATE TABLE public."Plan" (
 
 
 ALTER TABLE public."Plan" OWNER TO erp_user;
+
+--
+-- Name: Product; Type: TABLE; Schema: public; Owner: erp_user
+--
+
+CREATE TABLE public."Product" (
+    id text NOT NULL,
+    "companyId" text NOT NULL,
+    "branchId" text,
+    "productCategoryId" text,
+    code text,
+    name text NOT NULL,
+    description text,
+    "costPrice" numeric(10,2),
+    "salePrice" numeric(10,2) NOT NULL,
+    "isActive" boolean DEFAULT true NOT NULL,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) without time zone NOT NULL
+);
+
+
+ALTER TABLE public."Product" OWNER TO erp_user;
+
+--
+-- Name: ProductCategory; Type: TABLE; Schema: public; Owner: erp_user
+--
+
+CREATE TABLE public."ProductCategory" (
+    id text NOT NULL,
+    "companyId" text NOT NULL,
+    name text NOT NULL,
+    description text,
+    "isActive" boolean DEFAULT true NOT NULL,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) without time zone NOT NULL
+);
+
+
+ALTER TABLE public."ProductCategory" OWNER TO erp_user;
 
 --
 -- Name: Role; Type: TABLE; Schema: public; Owner: erp_user
@@ -426,8 +498,8 @@ ALTER TABLE public._prisma_migrations OWNER TO erp_user;
 --
 
 COPY public."Agent" (id, name, "agentKey", "companyId", "branchId", "isActive", "lastSeenAt", "createdAt", "updatedAt", "publicIp") FROM stdin;
-5ac2f379-3b46-48a5-a183-8145e58c5493	Agent - Principal	e1517fe357446954ee62c8b2a2d21458c6ec3462551e1e135886a6668b6029e2	6b828940-7fc0-449f-8a26-f91d237a0940	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee	t	2026-05-30 01:54:05.825	2026-05-05 14:46:06.517	2026-05-30 01:54:05.826	158.172.226.146
-d317bbef-1917-4fdd-9902-f893c5783b0b	Agent - Principal	ba207eef666d8073f67c8b20c7d6ddf1811471303aceebe9e1c0b8a8708ebfa2	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	t	2026-05-30 00:38:55.823	2026-05-07 22:35:11.357	2026-05-30 00:38:55.824	181.114.108.165
+5ac2f379-3b46-48a5-a183-8145e58c5493	Agent - Principal	e1517fe357446954ee62c8b2a2d21458c6ec3462551e1e135886a6668b6029e2	6b828940-7fc0-449f-8a26-f91d237a0940	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee	t	2026-05-30 22:44:21.732	2026-05-05 14:46:06.517	2026-05-30 22:44:21.733	158.172.226.146
+d317bbef-1917-4fdd-9902-f893c5783b0b	Agent - Principal	ba207eef666d8073f67c8b20c7d6ddf1811471303aceebe9e1c0b8a8708ebfa2	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	t	2026-05-30 16:38:36.935	2026-05-07 22:35:11.357	2026-05-30 16:38:36.942	181.114.108.165
 \.
 
 
@@ -698,9 +770,12 @@ be6e4cc0-5c20-4050-8992-8795f21a0565	{"name": "BELLA", "userId": "eacedabb-27b6-
 55103d6c-11a8-4ccc-a3d9-38ac6b59a6a5	{"name": "FREDDY SALINAS", "userId": "7f87d9c8-77b3-452c-8a86-202547061947", "endDate": "2026-06-20T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1779388145820.jpg", "startDate": "2026-05-21T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-21 18:29:19.239	2026-05-21 18:29:53.866	\N	0	SYNC_USER_FULL	DONE	a4de5797-9364-4087-b7f6-b644cf1048fe
 4f9e8a45-372c-4f41-baca-f33cb8fb27d1	{"name": "JORGE JUSTINIANO VALENCIA", "userId": "d16d40b5-6018-4c0d-9d3e-d6a06f271bfe", "endDate": "2026-05-26T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1779836450493.jpg", "startDate": "2026-05-26T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-26 23:08:33.718	2026-05-26 23:08:46.729	\N	0	SYNC_USER_FULL	DONE	5eb022ba-0406-4cfd-843a-0b6e44c7ed49
 3f42f760-a824-433e-a692-2c09197478f6	{"name": "AURELIO CAMPOS", "userId": "0d168b57-fe6f-433d-82db-2a0fcc1ee953", "endDate": "2026-12-28T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1779131703131.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-18 19:15:19.617	2026-05-18 19:20:55.318	employeeNo inválido: undefined	3	SYNC_USER_FULL	ERROR	\N
+0fd85777-637c-4e55-961c-84a80aa1eb07	{"customerId": "002bd4b0-9fb9-4c32-a4a3-7d0ecb809ba9"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 06:08:00.206	2026-05-30 12:48:06.029	\N	0	DELETE_USER	DONE	\N
+aa171074-8fe9-4131-aa87-b1bac4dd738c	{"customerId": "eacedabb-27b6-459f-a242-10e96f7eea0d"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 06:08:00.206	2026-05-30 12:48:06.906	\N	0	DELETE_USER	DONE	\N
 c11368fc-7462-41fb-8213-9cac0b2052d0	{"name": "MARIELA MENDOZA", "userId": "80e6cdb2-9234-431c-a2e5-ef9ead2b6047", "endDate": "2026-05-19T03:59:59.999Z", "imagePath": null, "startDate": "2026-04-27T04:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-13 01:01:58.623	2026-05-13 01:02:02.455	\N	0	SYNC_USER_FULL	DONE	\N
 b329d663-e9c7-4c07-908f-3a67c162ff57	{"name": "camila ", "userId": "19c8d67a-401b-4a28-8ef5-440709ccbb5d", "endDate": "2026-05-22T23:59:59.999Z", "imagePath": null, "startDate": "2026-05-21T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-21 20:11:10.407	2026-05-21 20:11:49.326	\N	0	SYNC_USER_FULL	DONE	4aeb9efc-7cf5-4dd3-8364-1fa5014a5677
 04cb41d1-e7bd-4770-be6b-1ce5aacb7870	{"name": "LUIS FERNANDO ROLLANO", "userId": "01a3b322-375b-4bb3-bc04-4255abb95861", "endDate": "2026-05-27T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1779837302843.jpg", "startDate": "2026-05-26T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-26 23:15:15.533	2026-05-26 23:15:46.688	\N	0	SYNC_USER_FULL	DONE	7e278a9d-7424-432d-9aa9-7185b963c975
+85cd47fd-5db8-4d40-b3b6-c6827e33a5cf	{"name": "KAREN VILLARROEL", "userId": "ef8719ef-4f37-40e2-bc60-906284743842", "endDate": "2026-09-26T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778673346824.jpg", "startDate": "2026-04-27T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 13:31:45.41	2026-05-30 13:32:36.92	\N	0	SYNC_USER_FULL	DONE	bed1347a-dbf5-4d44-a238-a07e5770a50a
 762ecf93-6181-4627-aea1-8d552ca5facf	{"name": "DARIL  CANCHEARI", "userId": "e72557bd-f3c2-4b5d-afb4-195224ab7bc9", "endDate": "2026-05-27T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1779837445122.jpg", "startDate": "2026-05-26T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-26 23:17:36.072	2026-05-26 23:17:47.189	\N	0	SYNC_USER_FULL	DONE	dd09c6ac-4d4e-44d9-892f-82b6de5d9e92
 59528822-a2ff-410a-a35c-74b72b245789	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875240801.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:00:43.581	2026-05-15 20:01:43.678	\N	0	SYNC_USER_FULL	DONE	\N
 cb0b6277-0654-42b9-940b-1b804eb7c2fb	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875240801.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:00:43.926	2026-05-15 20:01:46.79	\N	0	SYNC_USER_FULL	DONE	\N
@@ -713,6 +788,7 @@ e64733e3-0958-4ecc-bb7f-fc0c5ce073fd	{"name": "BELLA", "userId": "eacedabb-27b6-
 4da94756-f12c-409d-b9bf-076d8d6073eb	{"name": "SAMIR", "userId": "6fcab6d7-4652-483a-ae23-5ad05582d5d1", "endDate": "2026-05-22T03:59:59.999Z", "imagePath": null, "startDate": "2026-05-13T04:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-13 16:40:26.264	2026-05-13 16:40:30.144	\N	0	SYNC_USER_FULL	DONE	\N
 128a66fb-782f-484c-92c2-a85a7e9e72b9	{"name": "NEYTAN", "userId": "36e0dd56-c444-4495-9ff3-a1084577de5c", "endDate": "2026-05-22T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1779402595627.jpg", "startDate": "2026-05-21T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-21 22:30:11.342	2026-05-21 22:30:21.896	\N	0	SYNC_USER_FULL	DONE	b698e41f-71ec-4768-8a8e-ee52c05c2224
 4d7a11a5-bc14-4d68-942a-17583d7b2a6a	{"name": "GUSTAVO CHUGUIÑA", "userId": "55eb10c9-a707-479f-bbc9-c8e19760dcf3", "endDate": "2026-07-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778628964244.jpg", "startDate": "2026-05-12T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-26 23:21:42.319	2026-05-26 23:22:46.843	\N	0	SYNC_USER_FULL	DONE	9b5f1db7-7573-47df-8397-75fa61ecea95
+34bd4765-0717-4aa6-9749-bd05f820dcb4	{"name": "BRUNO MANSILLA", "userId": "cad0d165-8aee-4e43-9cbb-8627fd3b600e", "endDate": "2026-06-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778265867010.jpg", "startDate": "2026-05-30T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 14:13:09.115	2026-05-30 14:13:35.706	\N	0	SYNC_USER_FULL	DONE	278437d9-b028-48a4-89c3-a56095f4efbf
 a259d4ca-932c-46a3-8042-43cd116aa7cf	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875211807.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:00:23.275	2026-05-15 20:01:48.426	\N	0	SYNC_USER_FULL	DONE	\N
 51db605e-0fa8-4a37-9460-08a6cd583ca2	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875211807.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:00:23.801	2026-05-15 20:01:51.757	\N	0	SYNC_USER_FULL	DONE	\N
 405a2c9a-8cd9-40ba-9105-8689ba7bdc26	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875211807.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:00:24.275	2026-05-15 20:01:55.075	\N	0	SYNC_USER_FULL	DONE	\N
@@ -720,18 +796,23 @@ f6de4432-c640-48b1-bfdb-ff0fe6bc4774	{"name": "BELLA", "userId": "eacedabb-27b6-
 e97d8462-0f20-4c40-9539-ae2391f27fee	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875211807.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:00:28.6	2026-05-15 20:02:01.771	\N	0	SYNC_USER_FULL	DONE	\N
 6ac848d0-c33a-43d7-8d18-b4e8365e7c50	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875240801.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:01:03.849	2026-05-15 20:02:03.422	\N	0	SYNC_USER_FULL	DONE	\N
 9a1e01ed-fbf9-4ae0-a2fb-8184844b99d3	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875240801.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:01:04.272	2026-05-15 20:02:06.105	\N	0	SYNC_USER_FULL	DONE	\N
+e8247639-9006-4f7c-b406-af01293bf88c	{"name": "BRUNO MANSILLA", "userId": "cad0d165-8aee-4e43-9cbb-8627fd3b600e", "endDate": "2026-06-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778265867010.jpg", "startDate": "2026-05-30T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 14:13:28.478	2026-05-30 14:13:42.436	\N	0	SYNC_USER_FULL	DONE	\N
 521c06dc-2d28-4966-8bf8-b04fed7e680f	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875240801.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:01:14.921	2026-05-15 20:02:37.364	\N	0	SYNC_USER_FULL	DONE	\N
 cdf44101-9d23-445a-b21e-2be1b9cc34f6	{"name": "BELLA", "userId": "eacedabb-27b6-459f-a242-10e96f7eea0d", "endDate": "2026-05-29T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778875240801.jpg", "startDate": "2026-05-11T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:01:32.198	2026-05-15 20:02:39.98	\N	0	SYNC_USER_FULL	DONE	\N
 ef3a0da9-2df3-4504-bd30-846d1136214e	{"name": "BORIS BELTRAN", "userId": "ddfb4049-f4bc-4534-bd54-a9f9764b6cb8", "endDate": "2026-07-20T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778799827686.jpg", "startDate": "2026-04-27T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:50:47.843	2026-05-15 20:50:52.467	\N	0	SYNC_USER_FULL	DONE	\N
+67190dab-4c5e-4c1e-9b90-a1c4d67205af	{"name": "PÁBLO EDUARDO", "userId": "4612f9e3-113c-4aa2-afd6-4919a8355059", "endDate": "2026-05-31T23:59:59.999Z", "imagePath": null, "startDate": "2026-05-30T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 15:08:55.454	2026-05-30 15:09:22.607	\N	0	SYNC_USER_FULL	DONE	eef454d3-a812-445e-bb33-c45ff807e638
 1bf92190-5b68-403f-a64a-7262ca81f95e	{"name": "GUSTAVO LEON", "userId": "b490945f-208c-4b2a-881b-35ffd0eded6d", "endDate": "2026-08-19T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778264893721.jpg", "startDate": "2026-05-21T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-21 23:44:36.694	2026-05-21 23:45:11.98	\N	0	SYNC_USER_FULL	DONE	f15d6500-8f1f-415f-b173-4d649da36430
 4c2f335a-cba8-4b68-959c-1d92d675b82b	{"name": "ELVIS TOLA", "userId": "9d137b31-1c45-4940-929b-38a942ee224f", "endDate": "2027-04-09T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778266215461.jpg", "startDate": "2026-05-08T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 20:51:26.672	2026-05-15 20:51:31.126	\N	0	SYNC_USER_FULL	DONE	\N
 54391c9c-2967-4382-b25b-98077e419dc8	{"name": "HERMAN CABALLERO", "userId": "d4d3380f-768c-4bab-86ac-c0779227db6f", "endDate": "2026-09-14T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778622088053.jpg", "startDate": "2026-05-12T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-26 23:25:45.259	2026-05-26 23:26:46.904	\N	0	SYNC_USER_FULL	DONE	3067703f-a50a-4ab4-8daa-fa75c5cc0e27
 c6b85415-8fbe-4966-90a1-42b9a6a52715	{"name": "richard espada", "userId": "a7bfcc2d-4dd6-4931-a8d8-d0c3567fa8f5", "endDate": "2026-08-13T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778706964230.jpg", "startDate": "2026-05-15T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 21:11:44.199	2026-05-15 21:11:48.422	\N	0	SYNC_USER_FULL	DONE	3e076a96-e57f-43af-bdaa-fe35333b1baf
+c50485ee-765b-408c-a76d-9455351209be	{"name": "PÁBLO EDUARDO", "userId": "4612f9e3-113c-4aa2-afd6-4919a8355059", "endDate": "2026-05-31T23:59:59.999Z", "imagePath": null, "startDate": "2026-05-30T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 15:09:15.643	2026-05-30 15:09:28.67	\N	0	SYNC_USER_FULL	DONE	\N
 7cd42b59-75c8-4306-9a09-c767bc7bffe3	{"name": "CARLOS CHAVEZ", "userId": "f6c321cf-011b-4e88-8ed0-ce56b5851cdb", "endDate": "2026-08-24T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778717206069.jpg", "startDate": "2026-05-26T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-26 23:54:16.807	2026-05-26 23:54:46.887	\N	0	SYNC_USER_FULL	DONE	763d795d-b0c9-4f3d-9d5c-06d528142e5d
+e990be1d-65a2-40a1-9d9a-1c4f0321ff29	{"name": "PÁBLO EDUARDO", "userId": "4612f9e3-113c-4aa2-afd6-4919a8355059", "endDate": "2026-05-31T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1780153773793.jpg", "startDate": "2026-05-30T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 15:09:38.472	2026-05-30 15:09:45.277	\N	0	SYNC_USER_FULL	DONE	\N
 1a910374-ff60-476e-a297-e11194b1a459	{"customerId": "d4eb6f8b-3934-4ee8-b9b1-daa09b425929"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-22 06:08:00.31	2026-05-22 10:04:22.328	fetch failed	3	DELETE_USER	ERROR	\N
 fc96d1e4-b451-4ab2-9d83-f34e230f2c7a	{"customerId": "f6c321cf-011b-4e88-8ed0-ce56b5851cdb"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-22 06:08:00.31	2026-05-22 10:04:22.869	fetch failed	3	DELETE_USER	ERROR	\N
 22f0bcd3-cf44-4f05-9851-76b09dc51c42	{"customerId": "37a69c00-8984-45eb-b0f5-fac4464c485e"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-22 06:08:00.31	2026-05-22 10:04:23.463	fetch failed	3	DELETE_USER	ERROR	\N
 7627385a-ef1f-4c38-807c-717b28f6faf6	{"name": "LUIS CARDOZO", "userId": "e3035eb7-c298-4c9c-a3b8-8b9c6eae36c8", "endDate": "2026-05-27T03:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778882113641.jpg", "startDate": "2026-04-27T04:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-15 21:55:17.09	2026-05-15 21:55:21.969	\N	0	SYNC_USER_FULL	DONE	\N
+8b941deb-ed86-4797-aca3-96037ee8fae8	{"name": "JOEL PRADO", "userId": "49d4bf67-6569-4e44-bf96-b80f210fda92", "endDate": "2026-09-17T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778706464972.jpg", "startDate": "2026-05-12T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-30 16:03:03.285	2026-05-30 16:03:13.053	\N	0	SYNC_USER_FULL	DONE	6b894d75-0e7e-4fc6-86c5-71227a911306
 6c37725f-6916-462b-8f5d-76f27d9cd855	{"customerId": "3763abee-1b74-47e0-9f72-203bf58d976d"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-22 06:08:00.31	2026-05-22 10:04:24.002	fetch failed	3	DELETE_USER	ERROR	\N
 ca437887-fbf3-4311-a20b-0d16cee2df7d	{"customerId": "6fcab6d7-4652-483a-ae23-5ad05582d5d1"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-22 06:08:00.31	2026-05-22 10:04:24.54	fetch failed	3	DELETE_USER	ERROR	\N
 8c2777c4-0e20-4896-8a25-cc92dcbae0f9	{"name": "CARLOS CHAVEZ", "userId": "f6c321cf-011b-4e88-8ed0-ce56b5851cdb", "endDate": "2026-08-24T23:59:59.999Z", "imagePath": "https://apigymcloud.aplus-security.com/uploads/partners/1778717206069.jpg", "startDate": "2026-05-26T00:00:00.000Z"}	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	2026-05-26 23:54:53.503	2026-05-26 23:55:00.387	\N	0	SYNC_USER_FULL	DONE	\N
@@ -2310,8 +2391,8 @@ a711aca5-d93b-4684-9f33-8415334ff5ce	{"name": "RODRIGO QUISPE", "userId": "09444
 
 COPY public."Company" (id, name, "isActive", "createdAt", "updatedAt", "logoUrl") FROM stdin;
 6b293f8f-beec-4a45-9b22-98ceabe0f3a1	SYSTEM	t	2026-05-05 14:44:21.658	2026-05-05 14:44:21.658	\N
-ba873a42-909b-47cf-8bd7-15caaf87fd46	MetaFit Mutualista	t	2026-05-07 22:35:11.327	2026-05-16 07:46:49.334	uploads/logos/1778193332855.png
 6b828940-7fc0-449f-8a26-f91d237a0940	Inifinity	t	2026-05-05 14:46:06.498	2026-05-16 07:46:57.206	uploads/logos/1777992367339.png
+ba873a42-909b-47cf-8bd7-15caaf87fd46	MetaFit Mutualista	t	2026-05-07 22:35:11.327	2026-05-30 06:57:01.653	uploads/logos/1778193332855.png
 \.
 
 
@@ -2320,6 +2401,38 @@ ba873a42-909b-47cf-8bd7-15caaf87fd46	MetaFit Mutualista	t	2026-05-07 22:35:11.32
 --
 
 COPY public."CompanyPermission" (id, "companyId", "permissionId", "createdAt") FROM stdin;
+1aa42b15-3c68-4843-9555-d9ace101ac1f	ba873a42-909b-47cf-8bd7-15caaf87fd46	082e2a7a-eff6-44a1-b604-c2ab1edc95b5	2026-05-30 06:57:01.673
+b2fb7191-6c78-412f-b065-36f28028c58b	ba873a42-909b-47cf-8bd7-15caaf87fd46	9c876750-36f2-468e-a198-e10a9626cd00	2026-05-30 06:57:01.673
+1b0e8902-4eef-47ba-a791-f728f5cd21a7	ba873a42-909b-47cf-8bd7-15caaf87fd46	0f2dec1d-907c-4191-bc9a-acb18f6378a8	2026-05-30 06:57:01.673
+1086e574-6e8c-4ab8-919d-779e5d6e648b	ba873a42-909b-47cf-8bd7-15caaf87fd46	8f935806-88ce-43c1-9ada-4336968d1c04	2026-05-30 06:57:01.673
+538fc065-fadc-438c-8818-0366257b6b3a	ba873a42-909b-47cf-8bd7-15caaf87fd46	4bd2cf4f-9ba3-4d3a-a73f-2c558b2df365	2026-05-30 06:57:01.673
+39ea243c-6211-4a6b-848c-fbb1c6278e50	ba873a42-909b-47cf-8bd7-15caaf87fd46	dcde9549-77da-4227-ada0-35f7565804ef	2026-05-30 06:57:01.673
+e1cf8160-da7c-48fc-80e3-9ceb9cde82c7	ba873a42-909b-47cf-8bd7-15caaf87fd46	375daabc-e2c9-435e-b007-18245e5f2d0d	2026-05-30 06:57:01.673
+50876b21-4e12-4fe5-897d-483b0ccc962d	ba873a42-909b-47cf-8bd7-15caaf87fd46	0c38eda9-3781-4a72-93cc-810b51caf9c7	2026-05-30 06:57:01.673
+10d8f565-fae7-498a-b59e-bac5f0447c64	ba873a42-909b-47cf-8bd7-15caaf87fd46	bd9349cc-fc82-410f-8136-672a3f416fe1	2026-05-30 06:57:01.673
+7e663dc8-15ff-4dd0-b339-4842a438a8e8	ba873a42-909b-47cf-8bd7-15caaf87fd46	1d458a77-9b8d-4ebc-9931-97a7e74cf21c	2026-05-30 06:57:01.673
+c9b38949-5f8b-4331-a633-82d3c8922eab	ba873a42-909b-47cf-8bd7-15caaf87fd46	b645a3fc-7edd-4e3a-85f8-26469b2d0037	2026-05-30 06:57:01.673
+db38bb57-1210-4665-b83f-18e52b92c192	ba873a42-909b-47cf-8bd7-15caaf87fd46	79bef71b-18e5-4691-a2e4-be34146e9fc9	2026-05-30 06:57:01.673
+3669da18-14a5-4d7f-8a00-9b12cd21c0bf	ba873a42-909b-47cf-8bd7-15caaf87fd46	73e7330e-50a3-47e3-b86a-e80bf691db07	2026-05-30 06:57:01.673
+b7c8db57-853b-4fe6-a32b-11e2372dade0	ba873a42-909b-47cf-8bd7-15caaf87fd46	3c4c0349-cd46-4557-aa21-ced1ef68a054	2026-05-30 06:57:01.673
+1f97f32b-19b8-40b8-ab0e-99f41450f87f	ba873a42-909b-47cf-8bd7-15caaf87fd46	8906ae3f-dacf-4ba5-a2c6-e2e9c65f91a4	2026-05-30 06:57:01.673
+2a9cc37e-003e-4ac5-9e09-82fc99556f1d	ba873a42-909b-47cf-8bd7-15caaf87fd46	3f2b4874-7cfb-41dc-a7b8-bb5daa4c0735	2026-05-30 06:57:01.673
+7cd0c3cc-0c2f-4805-b0bd-c92bb3aedfd4	ba873a42-909b-47cf-8bd7-15caaf87fd46	e49620db-e84c-47bf-91a0-ff8867c8f412	2026-05-30 06:57:01.673
+41b5eb14-7e00-4b4a-be40-472ebdac9814	ba873a42-909b-47cf-8bd7-15caaf87fd46	6bb4ba35-d763-4f61-bb02-73c217976f25	2026-05-30 06:57:01.673
+75dd49ef-57dc-4125-a36f-de290d7189d9	ba873a42-909b-47cf-8bd7-15caaf87fd46	b3bc1161-8c43-4264-a60d-619e05cda55e	2026-05-30 06:57:01.673
+8282e750-a051-4c8e-9858-4c58b530ba60	ba873a42-909b-47cf-8bd7-15caaf87fd46	f3e6cf31-7278-4581-a485-28064fb99b5c	2026-05-30 06:57:01.673
+7aa093ed-2c53-4732-b70f-2587f8fbb298	ba873a42-909b-47cf-8bd7-15caaf87fd46	850ae969-9f55-41ca-bb53-80066d012323	2026-05-30 06:57:01.673
+459ccf01-4b17-49a7-a1f3-d0d521fb21e6	ba873a42-909b-47cf-8bd7-15caaf87fd46	4b5427f7-1569-4f59-ac2f-4901081ec4ff	2026-05-30 06:57:01.673
+74a81967-b9e4-440e-a87a-a63e594ad39a	ba873a42-909b-47cf-8bd7-15caaf87fd46	7c8eceef-79c0-45b2-b488-fba5e0416d10	2026-05-30 06:57:01.673
+9879133d-af2d-49a1-98b4-5c0d02bb2144	ba873a42-909b-47cf-8bd7-15caaf87fd46	4f9d90c9-6937-400c-8558-42084a010f6b	2026-05-30 06:57:01.673
+8a095b3c-ca18-42d6-a268-a425b12bbbf1	ba873a42-909b-47cf-8bd7-15caaf87fd46	9e60af65-3197-4112-b983-b1d3054b3edf	2026-05-30 06:57:01.673
+c6d774db-84c2-4f76-b0f7-8fc71b63aa44	ba873a42-909b-47cf-8bd7-15caaf87fd46	6b75f613-c410-4f85-b4a4-6a620b489e19	2026-05-30 06:57:01.673
+e2ce5d81-9403-4543-ad5e-65c0500ef2ae	ba873a42-909b-47cf-8bd7-15caaf87fd46	486d0feb-f43c-4e96-994c-7319239c112c	2026-05-30 06:57:01.673
+3361b0dc-55ea-4943-aedd-c540420c02c4	ba873a42-909b-47cf-8bd7-15caaf87fd46	e738238a-eb71-4323-8b30-5fb7a7d30b14	2026-05-30 06:57:01.673
+16a86e06-85dd-4a92-9a80-e880bc45b08c	ba873a42-909b-47cf-8bd7-15caaf87fd46	23a9c166-1a7a-4ef1-b026-61af37645e3b	2026-05-30 06:57:01.673
+f1e6121e-6e7a-4ed9-8ba8-1dae425e9a3c	ba873a42-909b-47cf-8bd7-15caaf87fd46	88b7d5b1-974c-41b0-8b38-d4dcb0ceeb2f	2026-05-30 06:57:01.673
+15a84872-52dd-4d91-a8b2-c5eb51e4ffb8	ba873a42-909b-47cf-8bd7-15caaf87fd46	94e4347f-16ae-43ad-b334-8cad426f5562	2026-05-30 06:57:01.673
+3279ad3f-a0d3-4e1a-a346-0e50000c700a	ba873a42-909b-47cf-8bd7-15caaf87fd46	d1fbb067-418d-4f1d-bd9b-ae25fa98e593	2026-05-30 06:57:01.673
 31e93c8c-83d4-4d0a-b6fd-bc1984c7b098	6b828940-7fc0-449f-8a26-f91d237a0940	73e7330e-50a3-47e3-b86a-e80bf691db07	2026-05-16 07:46:57.225
 f119d072-ef51-4af5-b793-49070a2f155f	6b828940-7fc0-449f-8a26-f91d237a0940	e738238a-eb71-4323-8b30-5fb7a7d30b14	2026-05-16 07:46:57.225
 50d874f1-f1ac-4ac0-8a62-2fbee1f215cc	6b828940-7fc0-449f-8a26-f91d237a0940	23a9c166-1a7a-4ef1-b026-61af37645e3b	2026-05-16 07:46:57.225
@@ -2339,39 +2452,15 @@ dea502e3-cbb7-4c9b-bd4e-25022a8bacbe	6b828940-7fc0-449f-8a26-f91d237a0940	f3e6cf
 951dffb4-6553-4a99-9fb5-994ce55e19b0	6b828940-7fc0-449f-8a26-f91d237a0940	850ae969-9f55-41ca-bb53-80066d012323	2026-05-16 07:46:57.225
 35d22838-afb1-4e46-82a6-56c29562a896	6b828940-7fc0-449f-8a26-f91d237a0940	4b5427f7-1569-4f59-ac2f-4901081ec4ff	2026-05-16 07:46:57.225
 d12b8799-ed3c-4df6-abcc-61919544599a	6b828940-7fc0-449f-8a26-f91d237a0940	d1fbb067-418d-4f1d-bd9b-ae25fa98e593	2026-05-16 07:46:57.225
-e4d277f4-1ada-43a0-bbfd-c5426faf103a	ba873a42-909b-47cf-8bd7-15caaf87fd46	bd9349cc-fc82-410f-8136-672a3f416fe1	2026-05-16 07:46:49.373
-66d8082b-fa09-48b0-80cc-f65063c887b9	ba873a42-909b-47cf-8bd7-15caaf87fd46	1d458a77-9b8d-4ebc-9931-97a7e74cf21c	2026-05-16 07:46:49.373
-f907ff5b-2dec-4194-a902-0c056735dd47	ba873a42-909b-47cf-8bd7-15caaf87fd46	b645a3fc-7edd-4e3a-85f8-26469b2d0037	2026-05-16 07:46:49.373
-9c30ea46-629c-4054-a41b-8b5d7e393e2b	ba873a42-909b-47cf-8bd7-15caaf87fd46	79bef71b-18e5-4691-a2e4-be34146e9fc9	2026-05-16 07:46:49.373
-1c5d927b-dfc5-4fa0-8ea1-4635cae08547	ba873a42-909b-47cf-8bd7-15caaf87fd46	73e7330e-50a3-47e3-b86a-e80bf691db07	2026-05-16 07:46:49.373
-93e53d36-ab37-46e5-b465-3235fd760164	ba873a42-909b-47cf-8bd7-15caaf87fd46	e738238a-eb71-4323-8b30-5fb7a7d30b14	2026-05-16 07:46:49.373
-d18f1f64-33f9-4aff-a745-042eb05d8ddb	ba873a42-909b-47cf-8bd7-15caaf87fd46	23a9c166-1a7a-4ef1-b026-61af37645e3b	2026-05-16 07:46:49.373
-e2691de0-92ab-475c-adfc-2a3e8dc600d9	ba873a42-909b-47cf-8bd7-15caaf87fd46	88b7d5b1-974c-41b0-8b38-d4dcb0ceeb2f	2026-05-16 07:46:49.373
-4c847c12-7373-4d18-956e-e1127f1b387d	ba873a42-909b-47cf-8bd7-15caaf87fd46	94e4347f-16ae-43ad-b334-8cad426f5562	2026-05-16 07:46:49.373
-f3f05e91-9052-4b3e-8477-0208e1e2dde0	ba873a42-909b-47cf-8bd7-15caaf87fd46	d1fbb067-418d-4f1d-bd9b-ae25fa98e593	2026-05-16 07:46:49.373
-9c7386e2-e4f8-47dc-9278-7479329b3f4a	ba873a42-909b-47cf-8bd7-15caaf87fd46	e0df5c84-efae-4efb-9145-e2cf00cd80dd	2026-05-16 07:46:49.373
-1dfda761-4a88-4189-97a0-d1db6e4c5b4f	ba873a42-909b-47cf-8bd7-15caaf87fd46	3415b815-1065-4c7f-93e3-afd53b84c557	2026-05-16 07:46:49.373
-2d96e94e-d417-40ed-8b82-a52d8ffe91ea	ba873a42-909b-47cf-8bd7-15caaf87fd46	1202de82-2216-4467-8f56-2666bf2f3448	2026-05-16 07:46:49.373
-8b5a0f16-0600-45ed-ab2b-8a92fd2cbb6a	ba873a42-909b-47cf-8bd7-15caaf87fd46	292ab621-eb16-45e2-9872-3d475315817b	2026-05-16 07:46:49.373
-33e74ddb-261f-4d77-8d8f-feb5dde913d4	ba873a42-909b-47cf-8bd7-15caaf87fd46	4f140291-f5f7-487b-a0a2-a34881d51517	2026-05-16 07:46:49.373
-54ae7817-e81f-467d-b72f-97c3dbc9fdb9	ba873a42-909b-47cf-8bd7-15caaf87fd46	082dcb9f-6381-4bca-9b3c-a4ef3dcbb706	2026-05-16 07:46:49.373
-f1da572c-ab3b-4471-94cf-068a4874d38b	ba873a42-909b-47cf-8bd7-15caaf87fd46	082e2a7a-eff6-44a1-b604-c2ab1edc95b5	2026-05-16 07:46:49.373
-370b9dc6-de29-4f20-96e9-5b758dac1c27	ba873a42-909b-47cf-8bd7-15caaf87fd46	9c876750-36f2-468e-a198-e10a9626cd00	2026-05-16 07:46:49.373
-0619fe5d-6098-4289-a6b3-52e080354d28	ba873a42-909b-47cf-8bd7-15caaf87fd46	0f2dec1d-907c-4191-bc9a-acb18f6378a8	2026-05-16 07:46:49.373
-fa65c523-1b8f-4d3c-a398-29b0e3e2cee5	ba873a42-909b-47cf-8bd7-15caaf87fd46	8f935806-88ce-43c1-9ada-4336968d1c04	2026-05-16 07:46:49.373
-7bdac281-7e10-49b8-a424-4f4eec3b97ca	ba873a42-909b-47cf-8bd7-15caaf87fd46	4bd2cf4f-9ba3-4d3a-a73f-2c558b2df365	2026-05-16 07:46:49.373
-a13a35ac-512f-412d-b5d5-0899565e3752	ba873a42-909b-47cf-8bd7-15caaf87fd46	dcde9549-77da-4227-ada0-35f7565804ef	2026-05-16 07:46:49.373
-5be382b7-13b7-4a8d-b2be-8d523efd724d	ba873a42-909b-47cf-8bd7-15caaf87fd46	375daabc-e2c9-435e-b007-18245e5f2d0d	2026-05-16 07:46:49.373
-f6bd7afa-3648-477f-aa8f-e1f21f294b3d	ba873a42-909b-47cf-8bd7-15caaf87fd46	0c38eda9-3781-4a72-93cc-810b51caf9c7	2026-05-16 07:46:49.373
-31ba3d9a-b90d-4a45-99e1-8fb269864d5d	ba873a42-909b-47cf-8bd7-15caaf87fd46	3c4c0349-cd46-4557-aa21-ced1ef68a054	2026-05-16 07:46:49.373
-5c0f4f73-b859-49f8-bc1a-907e92858c10	ba873a42-909b-47cf-8bd7-15caaf87fd46	8906ae3f-dacf-4ba5-a2c6-e2e9c65f91a4	2026-05-16 07:46:49.373
-5bcadef8-c48b-42dd-81a5-71af456a43ef	ba873a42-909b-47cf-8bd7-15caaf87fd46	3f2b4874-7cfb-41dc-a7b8-bb5daa4c0735	2026-05-16 07:46:49.373
-fe4c8711-05cb-4c97-8604-04340ae0b77f	ba873a42-909b-47cf-8bd7-15caaf87fd46	6bb4ba35-d763-4f61-bb02-73c217976f25	2026-05-16 07:46:49.373
-33158d33-8b04-4a27-bc3f-6ed2dcabb3a7	ba873a42-909b-47cf-8bd7-15caaf87fd46	b3bc1161-8c43-4264-a60d-619e05cda55e	2026-05-16 07:46:49.373
-6cad0da7-bfad-4127-a5f4-9880c3cae7af	ba873a42-909b-47cf-8bd7-15caaf87fd46	f3e6cf31-7278-4581-a485-28064fb99b5c	2026-05-16 07:46:49.373
-bbc5b4ce-9af1-4a76-92de-0e464d338616	ba873a42-909b-47cf-8bd7-15caaf87fd46	850ae969-9f55-41ca-bb53-80066d012323	2026-05-16 07:46:49.373
-1d40c9ee-e500-40c1-bb65-77400ee68fbb	ba873a42-909b-47cf-8bd7-15caaf87fd46	e49620db-e84c-47bf-91a0-ff8867c8f412	2026-05-16 07:46:49.373
-9e4dbd5b-48e6-4568-ba5c-d2c51ff87c89	ba873a42-909b-47cf-8bd7-15caaf87fd46	4b5427f7-1569-4f59-ac2f-4901081ec4ff	2026-05-16 07:46:49.373
+a97e5118-d3db-4c69-922b-04846d49afcf	ba873a42-909b-47cf-8bd7-15caaf87fd46	e0df5c84-efae-4efb-9145-e2cf00cd80dd	2026-05-30 06:57:01.673
+410ab49a-4d11-4774-8c22-402285b238e1	ba873a42-909b-47cf-8bd7-15caaf87fd46	3415b815-1065-4c7f-93e3-afd53b84c557	2026-05-30 06:57:01.673
+81639560-7c4d-436f-988a-de3130337e96	ba873a42-909b-47cf-8bd7-15caaf87fd46	1202de82-2216-4467-8f56-2666bf2f3448	2026-05-30 06:57:01.673
+a561eac4-54ec-468f-8cef-b0da0fc40a5e	ba873a42-909b-47cf-8bd7-15caaf87fd46	292ab621-eb16-45e2-9872-3d475315817b	2026-05-30 06:57:01.673
+9599ffb9-a5e7-4ae2-9848-29324a242340	ba873a42-909b-47cf-8bd7-15caaf87fd46	4f140291-f5f7-487b-a0a2-a34881d51517	2026-05-30 06:57:01.673
+6ba314fd-924e-4248-b72e-aa14dfff6494	ba873a42-909b-47cf-8bd7-15caaf87fd46	51bf6d97-0c9b-4006-9062-e3a57c83c30a	2026-05-30 06:57:01.673
+dab934ad-3ff0-4bfc-9bca-320f3ab401ca	ba873a42-909b-47cf-8bd7-15caaf87fd46	082dcb9f-6381-4bca-9b3c-a4ef3dcbb706	2026-05-30 06:57:01.673
+259a5e7b-1fdf-4a9a-b7e5-9dcfdeddb153	ba873a42-909b-47cf-8bd7-15caaf87fd46	f0ccf010-1d3e-424a-9703-705511ceb534	2026-05-30 06:57:01.673
+cd797dc2-44a0-420f-8c34-bfd2d67d4af5	ba873a42-909b-47cf-8bd7-15caaf87fd46	1d3ea5ec-ba24-49d1-a39a-20d054fe69b0	2026-05-30 06:57:01.673
 dfcfd5da-6156-4022-9763-18a9aa633da2	6b828940-7fc0-449f-8a26-f91d237a0940	e0df5c84-efae-4efb-9145-e2cf00cd80dd	2026-05-16 07:46:57.225
 17310868-1015-46f2-8e68-dc5ba006988c	6b828940-7fc0-449f-8a26-f91d237a0940	3415b815-1065-4c7f-93e3-afd53b84c557	2026-05-16 07:46:57.225
 7c0cf73d-d75b-49be-a4b9-5e598907c4ec	6b828940-7fc0-449f-8a26-f91d237a0940	1202de82-2216-4467-8f56-2666bf2f3448	2026-05-16 07:46:57.225
@@ -2406,7 +2495,6 @@ COPY public."CustomerMembership" (id, "customerId", "companyId", "startDate", "e
 12a78985-bdab-44c1-a344-aa46f3126253	4d64fb5f-71c6-4b3e-8c84-16d3322ec84c	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2027-05-13 23:59:59.999	ACTIVE	\N	f	\N	2026-05-08 18:39:22.337	2026-05-08 18:39:22.337	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 d25c5540-acfb-4197-8606-f01884173924	9d137b31-1c45-4940-929b-38a942ee224f	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2027-04-09 23:59:59.999	ACTIVE	\N	f	\N	2026-05-08 18:50:37.816	2026-05-08 18:50:37.816	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 f285dc63-e9a7-4a65-baa0-9f1a3a54f068	0be16069-145a-4e3b-a50a-34abe7a5d640	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2026-08-07 23:59:59.999	ACTIVE	\N	f	\N	2026-05-08 18:53:30.756	2026-05-08 18:53:30.756	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
-ee0a25c4-9a9c-471b-8044-aca5449a3b84	002bd4b0-9fb9-4c32-a4a3-7d0ecb809ba9	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2026-05-29 23:59:59.999	ACTIVE	\N	f	\N	2026-05-08 18:58:14.341	2026-05-08 18:58:14.35	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 9d3685f0-586a-48ef-ac9c-5c4078488b42	9d38d042-2c21-47ba-a498-6485e131b736	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2026-06-02 23:59:59.999	ACTIVE	\N	f	\N	2026-05-08 20:42:27.255	2026-05-08 20:42:27.255	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 4a8ebb3b-6b71-40d3-b3ab-09831932ba5c	7cef75cf-7a5b-4409-ba5a-21b7fe20f390	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2026-06-16 23:59:59.999	ACTIVE	\N	f	\N	2026-05-08 20:47:11.118	2026-05-08 20:47:11.118	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 d26e075c-ab84-4720-b101-f6f17e13d690	6051cd59-bfc0-4276-921a-a60835f6547a	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2026-06-06 23:59:59.999	ACTIVE	\N	f	\N	2026-05-08 20:55:36.058	2026-05-08 20:55:36.058	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2428,6 +2516,7 @@ f8659694-ab8b-4f16-8ea9-cdff27917c44	860285e5-dacc-4755-8c51-a572c5acce68	ba873a
 9d79b388-4b95-48f6-a5b7-baba3068a606	19c8d67a-401b-4a28-8ef5-440709ccbb5d	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-21 00:00:00	2026-05-22 23:59:59.999	EXPIRED	\N	f	\N	2026-05-21 20:11:10.26	2026-05-23 06:08:00.14	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 41824588-cc10-40e5-8db4-e872bace3654	1eeaa250-9d9d-45ae-86d6-295537c409ec	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-11 00:00:00	2026-05-23 23:59:59.999	EXPIRED	\N	f	\N	2026-05-11 23:01:09.911	2026-05-24 06:08:00.474	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 c79232fa-7bcd-473a-bbf6-60937c6ff5e1	7efb284c-a286-4338-81fb-e39a36939875	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2026-10-21 23:59:59.999	ACTIVE	\N	f	\N	2026-05-08 21:23:48.41	2026-05-29 22:34:13.655	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+ee0a25c4-9a9c-471b-8044-aca5449a3b84	002bd4b0-9fb9-4c32-a4a3-7d0ecb809ba9	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2026-05-29 23:59:59.999	EXPIRED	\N	f	\N	2026-05-08 18:58:14.341	2026-05-30 06:08:00.193	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 e67f10cb-7f6e-429b-9d35-b3d645260603	e88ca8d5-16cf-4501-99af-6501f49ff7a8	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-11 00:00:00	2026-06-10 23:59:59.999	ACTIVE	\N	f	\N	2026-05-11 16:04:42.274	2026-05-11 16:04:42.274	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 6e870649-05db-4c68-9e44-1764ddb415a1	4f91dff1-41bf-4b30-b9e7-b5f72e5e875c	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-11 00:00:00	2026-06-10 23:59:59.999	ACTIVE	\N	f	\N	2026-05-11 16:06:49.033	2026-05-11 16:06:49.033	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 6e5e2370-7819-409e-9fd8-b3daa5337513	a2aa3f8c-d134-48a9-ae05-6bab8b5880b8	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-11 00:00:00	2026-06-10 23:59:59.999	ACTIVE	\N	f	\N	2026-05-11 16:09:13.391	2026-05-11 16:09:13.391	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2469,7 +2558,6 @@ b6d5a75e-ab92-4be3-9672-591a48efbc0a	476f493e-162a-4d08-bbdd-939833a866d6	ba873a
 cea3ce86-c377-48bb-8836-c30531ef77c7	c65add80-0d84-459f-9361-f3346c7b3334	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-06-23 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 10:51:15.385	2026-05-12 10:51:15.385	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 3fa21938-c8c6-47aa-9a5e-6ed12a8f735c	ae2e561a-e9f5-40ce-bd69-ca9201bb8e74	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-09-27 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 11:04:59.224	2026-05-12 11:04:59.224	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 dfb6ca26-c009-4bd4-86ba-a307e1ae4423	2d6028b4-ee06-4004-9fa7-fcaf5f32c2df	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-15 00:00:00	2026-08-13 23:59:59.999	ACTIVE	\N	f	\N	2026-05-12 01:12:50.822	2026-05-15 17:46:31.643	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
-9e66b93d-ede4-447d-9cb5-2726a666783f	eacedabb-27b6-459f-a242-10e96f7eea0d	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-11 00:00:00	2026-05-29 23:59:59.999	ACTIVE	\N	f	\N	2026-05-11 23:27:52.733	2026-05-11 23:27:52.733	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 86b2b3da-6063-4d4a-a9ed-5ffcadf67cce	cdaf029c-3182-4ca9-b85b-fef51a732baf	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 00:00:00	2026-07-13 23:59:59.999	ACTIVE	\N	f	\N	2026-05-12 00:47:51.608	2026-05-12 00:47:51.608	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 8bd70d99-c32a-4e38-8976-0694c7bb8b48	a3a1bbab-a2dc-40da-aa6a-97146c5fee2a	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-30 00:00:00	2026-06-28 23:59:59.999	ACTIVE	\N	f	\N	2026-05-12 00:49:00.97	2026-05-12 00:49:00.97	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 013d5e3d-3d12-43a0-8e77-4dffe9efdfad	d23325f7-6aa2-4072-ba45-3a7885dbb7a9	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-01 00:00:00	2026-08-08 23:59:59.999	ACTIVE	\N	f	\N	2026-05-12 00:54:26.828	2026-05-12 00:54:26.828	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2492,6 +2580,7 @@ c3cc6df9-52ad-47b1-9bc0-84bd148f2af0	e803ed62-468c-44d4-bd33-1cee42348781	ba873a
 4d58bf04-3f5b-49ff-8280-bc280dcb60b6	f848e6ae-09d8-461a-83bc-9c82e5c9167d	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 00:00:00	2026-05-27 23:59:59.999	EXPIRED	\N	f	\N	2026-05-12 00:53:14.588	2026-05-28 06:08:00.183	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 36df75b0-93f6-462d-bb19-7c79a74b8681	fb6c9d8f-9441-484a-b6de-451233679e4d	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-27 00:00:00	2026-06-27 23:59:59.999	EXPIRED	\N	f	\N	2026-05-12 11:14:23.379	2026-05-28 22:29:49.589	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 a915bbcb-a516-41df-879b-4e259c601751	a86881ed-f927-4b62-9a38-8056f58d80e9	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-28 00:00:00	2026-08-26 23:59:59.999	EXPIRED	\N	f	\N	2026-05-12 00:55:44.916	2026-05-28 12:54:20.972	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+9e66b93d-ede4-447d-9cb5-2726a666783f	eacedabb-27b6-459f-a242-10e96f7eea0d	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-11 00:00:00	2026-05-29 23:59:59.999	EXPIRED	\N	f	\N	2026-05-11 23:27:52.733	2026-05-30 06:08:00.193	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 9a4d1523-0dd8-4d7e-bec2-e7318cda1dfd	cfc79a88-47f4-4abd-9672-aa15994283c2	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-11-27 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 11:34:24.063	2026-05-12 11:34:24.063	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 9abb7ece-7f9f-47fe-b712-aed1916e502d	40cdeee4-0cad-403f-b046-55a5a6a2351c	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2027-01-01 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 11:36:25.336	2026-05-12 11:36:25.336	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 e40f7d28-430c-4a99-8029-a823935e11dd	8d558a91-928d-48b5-81d5-0c16dcf8bd23	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-06-26 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 11:38:31.417	2026-05-12 11:38:31.417	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2562,7 +2651,6 @@ d491d921-09d6-477e-82ea-08d90202303b	b81a3908-21e5-472a-a121-ddb763d21638	ba873a
 f4cbd1bb-a242-481e-9a40-7cade36ce394	ca2be13a-9176-4b43-8314-40eaed72027e	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-07-08 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:02:46.733	2026-05-12 21:04:28.858	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 1ee5d09f-aca0-4e6b-a052-3bfe19a6a2fd	b32d71f7-2d8f-4923-a2b4-604f640aca69	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-06-16 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:09:13.462	2026-05-12 21:09:13.462	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 2c1fd779-0d10-4b58-8a3f-ce3d1280226d	505eb8af-b8be-4b0f-8074-9bcddc422b2b	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-07-15 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:11:22.205	2026-05-12 21:11:22.205	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
-9bf91240-598c-410e-8a77-ba148f45140b	49d4bf67-6569-4e44-bf96-b80f210fda92	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-06-19 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:12:38.286	2026-05-12 21:12:38.286	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 3460d4bc-0db1-4fd4-97d4-7fabeef281cb	bcdfe6c0-f61a-4831-88f3-f284058d8ce6	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-06-22 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:13:48.98	2026-05-12 21:13:48.98	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 ef9e0d21-70fb-4285-8b12-2a47d74878b2	8bc3f30b-309c-42f7-9f52-046e95de6276	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-06-06 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:15:08.034	2026-05-12 21:15:08.034	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 8a9aa5b3-bbfc-41bc-98df-a0d87549ae34	beea360c-2426-45c5-ad86-8d97db9ee8e3	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-08-20 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:21:58.242	2026-05-12 21:21:58.242	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2587,6 +2675,7 @@ a95ee826-f96c-4205-bf2b-10d2f58ed9a9	9be71f64-715b-4309-a173-09080275a11c	ba873a
 c4ec11a8-1cd4-4cfb-a875-06eb2d0f146e	c9a59bb0-22f9-4163-b915-e3db808c43da	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-06-13 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:57:00.157	2026-05-12 21:57:00.157	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 d2f8ff57-3fc1-44ab-90e4-cccff136f6ee	2b87e871-aade-4f8d-a6be-726da730ef6b	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-05-20 03:59:59.999	EXPIRED	\N	f	\N	2026-05-12 21:07:44.343	2026-05-20 06:08:00.207	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 cbd32c64-7905-4d6d-8951-7593f52d4e51	4179fe20-cdc2-4058-9a98-0fcb9f6f871b	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2027-03-06 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 22:00:24.096	2026-05-12 22:00:24.096	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+9bf91240-598c-410e-8a77-ba148f45140b	49d4bf67-6569-4e44-bf96-b80f210fda92	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 00:00:00	2026-09-17 23:59:59.999	ACTIVE	\N	f	\N	2026-05-12 21:12:38.286	2026-05-30 16:03:03.227	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 e9374837-c5dd-401b-8d21-09bf243f0905	4bd929fb-a536-4e2d-9bf0-837634d76370	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-26 00:00:00	2026-06-25 23:59:59.999	EXPIRED	\N	f	\N	2026-05-12 19:11:54.123	2026-05-26 20:07:32.989	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 5d06c764-6be7-4192-89df-e316685fdf79	c25e7f8e-c698-41c0-9a66-76f2bc76f445	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-25 00:00:00	2026-08-23 23:59:59.999	EXPIRED	\N	f	\N	2026-05-12 21:38:45.728	2026-05-25 23:46:54.32	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 5cf6819d-18fe-497b-ac7b-9d6b8695650e	3e1075af-dbda-4157-95a1-64e356170021	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-06-21 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 22:03:22.798	2026-05-12 22:03:22.798	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2594,7 +2683,6 @@ f656bed5-2eb8-433b-a57c-1c169ea0f9a6	a13eb0da-fca8-4fdd-b069-d9ee31d84c81	ba873a
 ff38a90d-6b6d-4a83-9ef8-345cf4d7b939	f5aa5643-fd47-4b8f-b4d7-57a6b988f7af	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-05 04:00:00	2026-08-05 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 22:39:06.002	2026-05-12 22:39:06.002	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 1c0d441b-7091-4a06-b602-db7387dc333d	03222926-4b5b-4f24-90ec-275aef476bd6	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 04:00:00	2026-12-30 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 22:44:10.417	2026-05-12 22:44:10.417	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 0cec6754-9e86-488e-a317-cbcc688b41ef	b89d7a62-ead2-4730-a8d5-bceacaeab00a	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-28 04:00:00	2027-02-19 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 22:45:19.419	2026-05-12 22:45:19.419	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
-947cfcd7-3c58-47ca-bd83-c5236388b41f	ef8719ef-4f37-40e2-bc60-906284743842	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 04:00:00	2026-06-28 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 22:48:54.384	2026-05-12 22:48:54.384	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 3b8115db-12cb-4ee8-a632-8ec6604d47dc	8ef6aab4-36e5-4e7a-92aa-f195b92e8384	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 04:00:00	2026-06-09 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 23:21:16.551	2026-05-12 23:21:16.551	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 7f89326e-6e0d-4095-b436-0ddcb1140b87	b4b33973-4a5e-4ee7-8cc5-f58b2955a51a	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-28 04:00:00	2026-07-28 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 23:26:57.985	2026-05-12 23:26:57.985	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 054e9307-77d1-45d3-8f79-76ee041799ed	c1d47b2a-2f9a-486e-8750-afa7479dcf9b	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 04:00:00	2027-02-19 03:59:59.999	ACTIVE	\N	f	\N	2026-05-12 23:28:45.907	2026-05-12 23:28:45.907	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2621,6 +2709,7 @@ a4fc32f9-088a-45fa-aadc-c6c774f9d82e	67b9ada8-e7e2-4bf9-83c1-7b23812d77fc	ba873a
 b97edb6e-9442-4a79-b8ff-55ec082efcc4	e3035eb7-c298-4c9c-a3b8-8b9c6eae36c8	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 04:00:00	2026-05-27 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 00:15:57.193	2026-05-27 06:08:00.224	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 60c29dca-527a-40e3-a18a-fcef5af7b710	d8f28584-b77e-47ea-a759-360927038451	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-12 04:00:00	2026-05-29 03:59:59.999	EXPIRED	\N	f	\N	2026-05-12 22:05:35.575	2026-05-29 06:08:00.202	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 467d17a5-3f00-464e-85e6-c6d9cf970da9	d897fa6f-52cd-4f6b-aa0f-0e0d9086123d	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-28 04:00:00	2026-05-29 03:59:59.999	EXPIRED	\N	f	\N	2026-05-12 23:16:17.148	2026-05-29 06:08:00.202	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+947cfcd7-3c58-47ca-bd83-c5236388b41f	ef8719ef-4f37-40e2-bc60-906284743842	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 00:00:00	2026-09-26 23:59:59.999	ACTIVE	\N	f	\N	2026-05-12 22:48:54.384	2026-05-30 13:31:45.353	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 37ecf975-0885-4ff9-8075-55de1efcbc44	7bcd2dac-1caf-446a-bba4-0003811ecf54	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-28 04:00:00	2026-07-10 03:59:59.999	ACTIVE	\N	f	\N	2026-05-13 00:56:44.927	2026-05-13 00:56:44.927	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 460123a5-cf3a-4b02-add5-7e7c0c3a3b87	da9da632-114e-47ab-aa02-73575091fe50	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-29 04:00:00	2026-06-21 03:59:59.999	ACTIVE	\N	f	\N	2026-05-13 00:57:48.516	2026-05-13 00:57:48.516	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 10d053dd-3d5c-4ced-b680-6db5a236c449	128eb675-3968-406a-9549-12f6e001c6d4	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-04-27 04:00:00	2026-06-02 03:59:59.999	ACTIVE	\N	f	\N	2026-05-13 00:59:30.271	2026-05-13 00:59:30.271	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2680,13 +2769,13 @@ c30de925-4c51-439c-b22a-f463bb1a80a9	0f8e1a36-c6b9-49b5-8ba5-ce178077c88a	ba873a
 29b3b53c-c773-4896-a3e8-bc1f7e265e12	6fcab6d7-4652-483a-ae23-5ad05582d5d1	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-05-22 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 16:40:26.251	2026-05-22 06:08:00.296	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 b609f8a0-f1b3-478a-81e8-587c30e37ea7	2c0aa1d4-f3f7-44e2-8516-a724e2990d3b	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-22 00:00:00	2026-06-21 23:59:59.999	EXPIRED	\N	f	\N	2026-05-12 22:11:59.168	2026-05-22 22:52:35.304	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 34a01d08-9803-4142-92f9-f98f9041945e	c8e56477-6d8d-4e23-bfca-59335a3c3197	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-28 00:00:00	2026-08-26 23:59:59.999	EXPIRED	\N	f	\N	2026-05-13 14:49:29.08	2026-05-28 15:01:52.95	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
-f020f7a4-15a2-423c-9f9f-d1a63b19d465	4612f9e3-113c-4aa2-afd6-4919a8355059	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-05-24 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 15:01:30.715	2026-05-24 06:08:00.474	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 712dd28e-8c7d-4452-b334-c551cf012707	ce1ff1f0-9262-435b-bd17-78b1fd25fc24	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-05-24 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 16:59:40.105	2026-05-24 06:08:00.474	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 4a6682c1-2c53-4b4a-957b-2085f2feabc8	9c68a247-ccef-40e6-a8dd-3fdba411f12d	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-25 00:00:00	2026-08-23 23:59:59.999	EXPIRED	\N	f	\N	2026-05-13 16:47:43.719	2026-05-25 17:22:40.892	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 978d4b48-a7c6-419a-8d2b-e7d1439a051c	c804208f-9b00-40ac-8f50-6aaea5f1b7c7	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-05-27 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 16:26:57.618	2026-05-27 06:08:00.224	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 757df239-2170-4754-8d87-0589c6ad0431	dfe136b3-1d7d-464c-a2c2-608a20c05465	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-05-29 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 16:12:31.015	2026-05-29 06:08:00.202	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 3dca86ff-28e9-426b-9389-8b21ba3d7340	7008574c-4ece-432a-b96c-ab1a811a8a98	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-28 00:00:00	2026-06-27 23:59:59.999	EXPIRED	\N	f	\N	2026-05-13 14:58:47.848	2026-05-28 14:48:08.168	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 81cf63d7-32ab-48a1-badb-4d5f89b162de	bae8a750-4296-43fa-bd65-9f0c827365a7	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-05-29 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 16:58:20.567	2026-05-29 06:08:00.202	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+f020f7a4-15a2-423c-9f9f-d1a63b19d465	4612f9e3-113c-4aa2-afd6-4919a8355059	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-30 00:00:00	2026-05-31 23:59:59.999	EXPIRED	\N	f	\N	2026-05-13 15:01:30.715	2026-05-30 15:08:55.386	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 c8c01d63-8f3b-4f42-bc02-c36f032da15d	09402461-b3c0-47bf-820d-abf9ed3b2661	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-06-17 03:59:59.999	ACTIVE	\N	f	\N	2026-05-13 17:08:27.619	2026-05-13 17:08:27.619	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 ab6b33ba-c8ac-47e0-912c-21c05e2d0d4e	51d1d5e0-7be3-4473-ad9a-2863df29a507	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-06-05 03:59:59.999	ACTIVE	\N	f	\N	2026-05-13 17:10:11.771	2026-05-13 17:10:11.771	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 98f20a71-84e7-49cb-a1b7-85ddc483b033	7dfdc883-425b-444b-8855-8e3ed40501b2	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-06-26 03:59:59.999	ACTIVE	\N	f	\N	2026-05-13 17:11:32.168	2026-05-13 17:11:32.168	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2800,7 +2889,6 @@ f362b9e6-0026-4f36-9091-055f7d3afa7f	ad16f06a-f352-41a7-944a-aada0c310fe0	ba873a
 b8242edf-13cf-461d-bd3a-40a6fbf9179b	fbce69d1-10b9-44fd-bcf0-92a5888fd7d2	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-27 00:00:00	2026-06-15 23:59:59.999	ACTIVE	\N	f	\N	2026-05-27 20:05:39.033	2026-05-27 20:05:39.033	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 63bd1d6b-f55b-4b9e-94ad-ea246ac9fcc0	1b3add3e-2db1-43a7-a43f-b49ee5ea6326	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-27 00:00:00	2026-12-09 23:59:59.999	ACTIVE	\N	f	\N	2026-05-27 20:07:23.038	2026-05-27 20:07:23.038	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 58fe7a4e-5976-4d4c-956e-dd0b93a3ed4b	1b1d37cd-8aa6-41dd-872b-573c0be53d01	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-28 00:00:00	2026-12-26 23:59:59.999	ACTIVE	\N	f	\N	2026-05-27 20:07:58.066	2026-05-27 20:07:58.066	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
-9bd31a3e-f7d2-49b8-a588-4e76bef8a5e5	cad0d165-8aee-4e43-9cbb-8627fd3b600e	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-08 00:00:00	2026-05-27 23:59:59.999	EXPIRED	\N	f	\N	2026-05-08 18:44:48.828	2026-05-28 06:08:00.183	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 b3cfd028-42de-4f43-9a85-51c746aa2407	395d7599-523a-4a6d-9b8d-f5023873ef25	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-11 00:00:00	2026-05-27 23:59:59.999	EXPIRED	\N	f	\N	2026-05-11 21:26:52.172	2026-05-28 06:08:00.183	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 445d745c-bfa0-47cf-9840-41e7f77b07e3	3004aa20-e37a-43c3-b807-ccaf85841daa	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-05-28 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 17:44:12.073	2026-05-28 06:08:00.183	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 c77121a3-dd3f-4d59-bdcf-9c71224d48c9	5b5c5739-ea30-4366-ad38-2c4571dcdcfb	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-13 04:00:00	2026-05-28 03:59:59.999	EXPIRED	\N	f	\N	2026-05-13 17:45:22.298	2026-05-28 06:08:00.183	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
@@ -2812,6 +2900,7 @@ d6f86156-5d89-4185-a53f-7e149cbf3fad	01a3b322-375b-4bb3-bc04-4255abb95861	ba873a
 b46c0617-5b68-412f-adc7-67f607e1cce8	9e8a6b83-8aa7-43c2-b5de-df27e037c468	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-29 00:00:00	2026-05-30 23:59:59.999	ACTIVE	\N	f	\N	2026-05-29 01:03:46.67	2026-05-29 01:03:46.67	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 72ca3a98-0fc1-4ef5-82ca-489f30ab2345	e4f39aaf-a73b-488b-99ac-70a0d4a77f18	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-29 00:00:00	2026-06-28 23:59:59.999	ACTIVE	\N	f	\N	2026-05-29 11:59:58.811	2026-05-29 13:22:03.97	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 0dcd97c5-5a00-462a-ab1b-d0e8a9e7b08c	12adc9c4-7168-4852-86b2-b9415986c8ca	6b828940-7fc0-449f-8a26-f91d237a0940	2026-05-29 00:00:00	2029-12-31 23:59:59.999	ACTIVE	\N	f	\N	2026-05-29 21:04:00.974	2026-05-29 21:04:00.974	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee
+9bd31a3e-f7d2-49b8-a588-4e76bef8a5e5	cad0d165-8aee-4e43-9cbb-8627fd3b600e	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-30 00:00:00	2026-06-29 23:59:59.999	EXPIRED	\N	f	\N	2026-05-08 18:44:48.828	2026-05-30 14:13:09.08	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 \.
 
 
@@ -2820,10 +2909,18 @@ b46c0617-5b68-412f-adc7-67f607e1cce8	9e8a6b83-8aa7-43c2-b5de-df27e037c468	ba873a
 --
 
 COPY public."Device" (id, name, ip, port, username, password, "deviceType", brand, "isActive", "companyId", "branchId", "agentId", "lastSeenAt", "createdAt", "updatedAt", "lastConnectionAt", status) FROM stdin;
-d0316808-230a-4f9b-be69-99baa051ab4d	Entrada	192.168.0.8	80	admin	U2FsdGVkX1/1zn8OTiOLKuYUB9kcx0CbtBMdrhkFxwE=	ACCESS_CONTROL	HIKVISION	t	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	\N	2026-05-30 00:38:55.879	2026-05-07 22:38:03.818	2026-05-30 00:38:55.88	2026-05-30 00:38:55.879	CONNECTED
-3db306d4-a4c8-471c-8adc-f43096810718	Salida	192.168.0.9	80	admin	U2FsdGVkX18l3WuLvFZUCLd/L8FP3tRSb/og4zYYPX8=	ACCESS_CONTROL	HIKVISION	t	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	\N	2026-05-30 00:38:55.888	2026-05-07 22:38:26.283	2026-05-30 00:38:55.89	2026-05-30 00:38:55.888	CONNECTED
-8905e4cc-9f9f-43c8-9a6b-d4a4466c69d5	Salida	192.168.0.13	80	admin	U2FsdGVkX1/eASp1z0O4LUAPwn0cEQQdlXjWDK8ia0w=	ACCESS_CONTROL	HIKVISION	t	6b828940-7fc0-449f-8a26-f91d237a0940	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee	\N	2026-05-30 01:54:05.83	2026-05-29 19:32:36.047	2026-05-30 01:54:05.831	2026-05-30 01:54:05.83	CONNECTED
-bfb2262d-f098-4bd4-b31a-b758752170df	Entrada	192.168.0.14	80	admin	U2FsdGVkX1+euKeREauubWwKnmJqeCfAVgPJsTXtbiE=	ACCESS_CONTROL	HIKVISION	t	6b828940-7fc0-449f-8a26-f91d237a0940	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee	\N	2026-05-30 01:54:05.843	2026-05-29 19:31:12.219	2026-05-30 01:54:05.845	2026-05-30 01:54:05.843	CONNECTED
+8905e4cc-9f9f-43c8-9a6b-d4a4466c69d5	Salida	192.168.0.13	80	admin	U2FsdGVkX1/eASp1z0O4LUAPwn0cEQQdlXjWDK8ia0w=	ACCESS_CONTROL	HIKVISION	t	6b828940-7fc0-449f-8a26-f91d237a0940	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee	\N	2026-05-30 22:44:21.833	2026-05-29 19:32:36.047	2026-05-30 22:44:21.836	2026-05-30 22:44:21.833	CONNECTED
+bfb2262d-f098-4bd4-b31a-b758752170df	Entrada	192.168.0.14	80	admin	U2FsdGVkX1+euKeREauubWwKnmJqeCfAVgPJsTXtbiE=	ACCESS_CONTROL	HIKVISION	t	6b828940-7fc0-449f-8a26-f91d237a0940	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee	\N	2026-05-30 22:44:21.841	2026-05-29 19:31:12.219	2026-05-30 22:44:21.843	2026-05-30 22:44:21.841	CONNECTED
+d0316808-230a-4f9b-be69-99baa051ab4d	Entrada	192.168.0.8	80	admin	U2FsdGVkX1/1zn8OTiOLKuYUB9kcx0CbtBMdrhkFxwE=	ACCESS_CONTROL	HIKVISION	t	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	\N	2026-05-30 16:38:36.946	2026-05-07 22:38:03.818	2026-05-30 16:38:36.947	2026-05-30 16:38:36.946	CONNECTED
+3db306d4-a4c8-471c-8adc-f43096810718	Salida	192.168.0.9	80	admin	U2FsdGVkX18l3WuLvFZUCLd/L8FP3tRSb/og4zYYPX8=	ACCESS_CONTROL	HIKVISION	t	ba873a42-909b-47cf-8bd7-15caaf87fd46	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	\N	2026-05-30 16:38:36.951	2026-05-07 22:38:26.283	2026-05-30 16:38:36.952	2026-05-30 16:38:36.951	CONNECTED
+\.
+
+
+--
+-- Data for Name: InventoryMovement; Type: TABLE DATA; Schema: public; Owner: erp_user
+--
+
+COPY public."InventoryMovement" (id, "companyId", "branchId", "productId", type, quantity, notes, "createdAt") FROM stdin;
 \.
 
 
@@ -2965,6 +3062,10 @@ e4f02fe9-1eae-412d-900e-20dacf48c92f	7bf840df-b1a4-4bb2-b372-80da676d54a2	1689f2
 bb666c34-620e-425b-a63c-218d70a53f31	5bbc38ef-f69c-4218-8620-2a2289a2c6b7	1689f254-3f0e-47c7-80b7-6de36d0936aa	6b828940-7fc0-449f-8a26-f91d237a0940	2026-05-29 00:00:00	2026-05-30 23:59:59.999	ACTIVE	20.00	2026-05-29 21:39:09.115	2026-05-29 21:39:09.11	b34eadb5-350e-4c72-8153-fab9cd740c7f	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee
 bd557c6b-859e-4ac1-94f7-a934a1c2817c	b91ec917-d1f3-4838-b542-09992ef68a3a	0abc1027-2921-479c-8f23-8071267a3eb0	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-29 00:00:00	2027-05-29 23:59:59.999	ACTIVE	900.00	2026-05-29 22:16:44.435	2026-05-29 22:16:44.428	543856ad-d4b6-4be7-93b5-e9bf0052c782	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 04a54888-ed1e-41b7-8690-538925b2818b	7efb284c-a286-4338-81fb-e39a36939875	e13b2784-d129-4d98-9106-571b727e2ae2	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-07-23 00:00:00	2026-10-21 23:59:59.999	ACTIVE	260.00	2026-05-29 22:34:13.694	2026-05-29 22:34:13.685	543856ad-d4b6-4be7-93b5-e9bf0052c782	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+bed1347a-dbf5-4d44-a238-a07e5770a50a	ef8719ef-4f37-40e2-bc60-906284743842	e13b2784-d129-4d98-9106-571b727e2ae2	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-06-28 00:00:00	2026-09-26 23:59:59.999	ACTIVE	260.00	2026-05-30 13:31:45.373	2026-05-30 13:31:45.371	543856ad-d4b6-4be7-93b5-e9bf0052c782	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+278437d9-b028-48a4-89c3-a56095f4efbf	cad0d165-8aee-4e43-9cbb-8627fd3b600e	531f0a99-dcc1-4a33-9eb2-6d592c805893	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-30 00:00:00	2026-06-29 23:59:59.999	ACTIVE	130.00	2026-05-30 14:13:09.104	2026-05-30 14:13:09.099	543856ad-d4b6-4be7-93b5-e9bf0052c782	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+eef454d3-a812-445e-bb33-c45ff807e638	4612f9e3-113c-4aa2-afd6-4919a8355059	ff7413fc-a352-4e48-a411-c1a79e2b4b59	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-30 00:00:00	2026-05-31 23:59:59.999	ACTIVE	30.00	2026-05-30 15:08:55.433	2026-05-30 15:08:55.43	543856ad-d4b6-4be7-93b5-e9bf0052c782	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
+6b894d75-0e7e-4fc6-86c5-71227a911306	49d4bf67-6569-4e44-bf96-b80f210fda92	e13b2784-d129-4d98-9106-571b727e2ae2	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-06-19 00:00:00	2026-09-17 23:59:59.999	ACTIVE	260.00	2026-05-30 16:03:03.262	2026-05-30 16:03:03.259	543856ad-d4b6-4be7-93b5-e9bf0052c782	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2
 \.
 
 
@@ -3223,7 +3324,6 @@ f3826acb-1d1e-4b78-be81-49089d60bfa5	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOM
 0a503a53-66ed-4782-8e4a-a283b45aab48	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	NICOLAS GUIMBARD	95839781	\N	\N	\N	t	2026-05-13 13:48:05.54	\N
 432c9309-25be-4937-a3bd-0fa681fc0f48	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	NICOLAS	12790957	\N	\N	\N	t	2026-05-13 13:38:12.621	uploads/partners/1778682575398.jpg
 38bb5b7f-71c7-4913-9d37-881777be2797	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	PAOLA GUAMAN	3456705	\N	\N	\N	t	2026-05-13 14:44:13.072	\N
-4612f9e3-113c-4aa2-afd6-4919a8355059	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	PÁBLO EDUARDO	6340931	\N	\N	\N	t	2026-05-13 15:01:17.091	\N
 84d549d6-b9ff-42c5-ac56-dc15aebf58ec	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	RAMON MENDOZA	3191105	\N	\N	\N	t	2026-05-13 15:44:27.707	\N
 5cb5bbf5-4215-4c96-a91d-3659c47d7004	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	ROBERTO JUSTIANO	65848610	\N	\N	\N	t	2026-05-13 16:10:56.119	\N
 958a722c-2b94-4350-8176-55eb498d71c9	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	RICHARD CALDERON	6342200	\N	\N	\N	t	2026-05-13 16:00:51.601	uploads/partners/1778689436478.jpg
@@ -3261,6 +3361,7 @@ e362210c-2556-484b-8211-a29a41576a0c	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOM
 3edfda55-e29d-4bbd-8264-d96319e4c848	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	NELSON COPA	14141442	\N	\N	\N	t	2026-05-13 13:04:31.213	uploads/partners/1779219774685.jpg
 c4903655-5743-4f9b-b8e9-fe184dadf7b8	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	NICOLE SOLETO	74619991	\N	\N	\N	t	2026-05-13 13:50:14.278	uploads/partners/1779231369887.jpg
 0f8e1a36-c6b9-49b5-8ba5-ce178077c88a	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	SHOEI	8895601	\N	\N	\N	t	2026-05-13 17:02:49.744	uploads/partners/1779234768145.jpg
+4612f9e3-113c-4aa2-afd6-4919a8355059	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	PÁBLO EDUARDO	6340931	\N	\N	\N	t	2026-05-13 15:01:17.091	uploads/partners/1780153773793.jpg
 51d1d5e0-7be3-4473-ad9a-2863df29a507	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	SORAYA SUBIRANA	8235089	\N	\N	\N	t	2026-05-13 17:09:50.388	\N
 7dfdc883-425b-444b-8855-8e3ed40501b2	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	STEVE ALMANZA	12534615	\N	\N	\N	t	2026-05-13 17:11:06.867	\N
 e6187633-0f88-4896-a42f-8a39a9e67f88	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOMER	VALERIA FERNANDEZ	76634525	\N	\N	\N	t	2026-05-13 17:14:45.463	\N
@@ -3399,37 +3500,26 @@ e4f39aaf-a73b-488b-99ac-70a0d4a77f18	ba873a42-909b-47cf-8bd7-15caaf87fd46	CUSTOM
 --
 
 COPY public."Permission" (id, code, description, scope, "isActive") FROM stdin;
-5b89eda2-2c06-4981-8aad-7785bc4d5791	SYSTEM_COMPANIES_VIEW	Ver empresas	SYSTEM	t
 3cd586e6-6949-433c-8c38-d1c43151a193	SYSTEM_COMPANIES_CREATE	Crear empresas	SYSTEM	t
 a7f54f84-7349-4c1b-965c-023c9d6f91ac	SYSTEM_COMPANIES_EDIT	Editar empresas	SYSTEM	t
-e0df5c84-efae-4efb-9145-e2cf00cd80dd	TENANT_SALES_VIEW	Ver ventas	TENANT	t
-3415b815-1065-4c7f-93e3-afd53b84c557	TENANT_SALES_CREATE	Crear ventas	TENANT	t
-1202de82-2216-4467-8f56-2666bf2f3448	TENANT_SALES_EDIT	Editar ventas	TENANT	t
-292ab621-eb16-45e2-9872-3d475315817b	TENANT_SALES_DELETE	Eliminar ventas	TENANT	t
-4f140291-f5f7-487b-a0a2-a34881d51517	TENANT_PLANS_VIEW	Ver planes	TENANT	t
-082dcb9f-6381-4bca-9b3c-a4ef3dcbb706	TENANT_PLANS_CREATE	Crear planes	TENANT	t
-082e2a7a-eff6-44a1-b604-c2ab1edc95b5	TENANT_PLANS_EDIT	Editar planes	TENANT	t
-9c876750-36f2-468e-a198-e10a9626cd00	TENANT_PLANS_DELETE	Eliminar planes	TENANT	t
-0f2dec1d-907c-4191-bc9a-acb18f6378a8	TENANT_PARTNER_VIEW	Ver socios	TENANT	t
-8f935806-88ce-43c1-9ada-4336968d1c04	TENANT_PARTNER_CREATE	Crear socios	TENANT	t
 9dac889c-cb10-48dc-8845-6fb61122dd52	SYSTEM_COMPANIES_DELETE	Eliminar empresas	SYSTEM	t
 de553f0c-2f3a-4d9e-99df-82ff80e0e6a2	SYSTEM_BRANCH_VIEW	Ver sucursales	SYSTEM	t
 f01f4555-3e42-4848-9b42-424376fb7504	SYSTEM_BRANCH_CREATE	Crear sucursales	SYSTEM	t
 21a9607c-af97-4654-85b7-97f2858af7ea	SYSTEM_BRANCH_EDIT	Editar sucursales	SYSTEM	t
 1d26e0a4-aa06-4732-839c-28b16f7cba18	SYSTEM_BRANCH_DELETE	Eliminar sucursales	SYSTEM	t
+082e2a7a-eff6-44a1-b604-c2ab1edc95b5	TENANT_PLANS_EDIT	Editar planes	TENANT	t
+9c876750-36f2-468e-a198-e10a9626cd00	TENANT_PLANS_DELETE	Eliminar planes	TENANT	t
+0f2dec1d-907c-4191-bc9a-acb18f6378a8	TENANT_PARTNER_VIEW	Ver socios	TENANT	t
+8f935806-88ce-43c1-9ada-4336968d1c04	TENANT_PARTNER_CREATE	Crear socios	TENANT	t
+4bd2cf4f-9ba3-4d3a-a73f-2c558b2df365	TENANT_PARTNER_EDIT	Editar socios	TENANT	t
+dcde9549-77da-4227-ada0-35f7565804ef	TENANT_PARTNER_DELETE	Eliminar socios	TENANT	t
+375daabc-e2c9-435e-b007-18245e5f2d0d	TENANT_MEMBERSHIP_VIEW	Ver membresías	TENANT	t
+0c38eda9-3781-4a72-93cc-810b51caf9c7	TENANT_MEMBERSHIP_CREATE	Crear membresías	TENANT	t
 bd9349cc-fc82-410f-8136-672a3f416fe1	TENANT_USERS_VIEW	Ver usuarios	TENANT	t
 1d458a77-9b8d-4ebc-9931-97a7e74cf21c	TENANT_USERS_CREATE	Crear usuarios	TENANT	t
 b645a3fc-7edd-4e3a-85f8-26469b2d0037	TENANT_USERS_EDIT	Editar usuarios	TENANT	t
 79bef71b-18e5-4691-a2e4-be34146e9fc9	TENANT_USERS_DELETE	Eliminar usuarios	TENANT	t
 73e7330e-50a3-47e3-b86a-e80bf691db07	TENANT_ROLES_VIEW	Ver roles	TENANT	t
-e738238a-eb71-4323-8b30-5fb7a7d30b14	TENANT_ROLES_CREATE	Crear roles	TENANT	t
-23a9c166-1a7a-4ef1-b026-61af37645e3b	TENANT_ROLES_EDIT	Editar roles	TENANT	t
-88b7d5b1-974c-41b0-8b38-d4dcb0ceeb2f	TENANT_ROLES_DELETE	Eliminar roles	TENANT	t
-94e4347f-16ae-43ad-b334-8cad426f5562	TENANT_PERMISSIONS_VIEW	Ver permisos	TENANT	t
-4bd2cf4f-9ba3-4d3a-a73f-2c558b2df365	TENANT_PARTNER_EDIT	Editar socios	TENANT	t
-dcde9549-77da-4227-ada0-35f7565804ef	TENANT_PARTNER_DELETE	Eliminar socios	TENANT	t
-375daabc-e2c9-435e-b007-18245e5f2d0d	TENANT_MEMBERSHIP_VIEW	Ver membresías	TENANT	t
-0c38eda9-3781-4a72-93cc-810b51caf9c7	TENANT_MEMBERSHIP_CREATE	Crear membresías	TENANT	t
 3c4c0349-cd46-4557-aa21-ced1ef68a054	TENANT_MEMBERSHIP_EDIT	Editar membresías	TENANT	t
 8906ae3f-dacf-4ba5-a2c6-e2e9c65f91a4	TENANT_MEMBERSHIP_DELETE	Eliminar membresías	TENANT	t
 3f2b4874-7cfb-41dc-a7b8-bb5daa4c0735	TENANT_MEMBERSHIP_ASSIGN	Asignar membresías	TENANT	t
@@ -3439,7 +3529,26 @@ b3bc1161-8c43-4264-a60d-619e05cda55e	TENANT_DEVICES_CREATE	Crear dispositivos	TE
 f3e6cf31-7278-4581-a485-28064fb99b5c	TENANT_DEVICES_EDIT	Editar dispositivos	TENANT	t
 850ae969-9f55-41ca-bb53-80066d012323	TENANT_DEVICES_DELETE	Eliminar dispositivos	TENANT	t
 4b5427f7-1569-4f59-ac2f-4901081ec4ff	TENANT_DASHBOARD_VIEW	Ver dashboard	TENANT	t
+7c8eceef-79c0-45b2-b488-fba5e0416d10	TENANT_PRODUCT_CATEGORIES_VIEW	Ver categorías de productos	TENANT	t
+4f9d90c9-6937-400c-8558-42084a010f6b	TENANT_PRODUCT_CATEGORIES_CREATE	Crear categorías de productos	TENANT	t
+9e60af65-3197-4112-b983-b1d3054b3edf	TENANT_PRODUCT_CATEGORIES_EDIT	Editar categorías de productos	TENANT	t
+6b75f613-c410-4f85-b4a4-6a620b489e19	TENANT_PRODUCT_CATEGORIES_DELETE	Eliminar categorías de productos	TENANT	t
+486d0feb-f43c-4e96-994c-7319239c112c	TENANT_PRODUCTS_VIEW	Ver productos	TENANT	t
+5b89eda2-2c06-4981-8aad-7785bc4d5791	SYSTEM_COMPANIES_VIEW	Ver empresas	SYSTEM	t
+e738238a-eb71-4323-8b30-5fb7a7d30b14	TENANT_ROLES_CREATE	Crear roles	TENANT	t
+23a9c166-1a7a-4ef1-b026-61af37645e3b	TENANT_ROLES_EDIT	Editar roles	TENANT	t
+88b7d5b1-974c-41b0-8b38-d4dcb0ceeb2f	TENANT_ROLES_DELETE	Eliminar roles	TENANT	t
+94e4347f-16ae-43ad-b334-8cad426f5562	TENANT_PERMISSIONS_VIEW	Ver permisos	TENANT	t
 d1fbb067-418d-4f1d-bd9b-ae25fa98e593	TENANT_BRANCH_VIEW	Ver sucursales	TENANT	t
+e0df5c84-efae-4efb-9145-e2cf00cd80dd	TENANT_SALES_VIEW	Ver ventas	TENANT	t
+3415b815-1065-4c7f-93e3-afd53b84c557	TENANT_SALES_CREATE	Crear ventas	TENANT	t
+1202de82-2216-4467-8f56-2666bf2f3448	TENANT_SALES_EDIT	Editar ventas	TENANT	t
+292ab621-eb16-45e2-9872-3d475315817b	TENANT_SALES_DELETE	Eliminar ventas	TENANT	t
+4f140291-f5f7-487b-a0a2-a34881d51517	TENANT_PLANS_VIEW	Ver planes	TENANT	t
+51bf6d97-0c9b-4006-9062-e3a57c83c30a	TENANT_PRODUCTS_CREATE	Crear productos	TENANT	t
+082dcb9f-6381-4bca-9b3c-a4ef3dcbb706	TENANT_PLANS_CREATE	Crear planes	TENANT	t
+f0ccf010-1d3e-424a-9703-705511ceb534	TENANT_PRODUCTS_EDIT	Editar productos	TENANT	t
+1d3ea5ec-ba24-49d1-a39a-20d054fe69b0	TENANT_PRODUCTS_DELETE	Eliminar productos	TENANT	t
 \.
 
 
@@ -3460,6 +3569,22 @@ e13b2784-d129-4d98-9106-571b727e2ae2	Promo Trimestral	Promo trimestral	260.00000
 9b0f863b-c760-4076-be7e-7b06d08a8bc6	SEMANAL	PLAN SEMANAL	80.000000000000000000000000000000	7	t	6b828940-7fc0-449f-8a26-f91d237a0940	2026-05-29 21:20:11.003	2026-05-29 21:20:11.003
 765d3a1a-26c1-4989-9489-ac537d17fc97	QUINCENAL	PLAN QUINCENAL	120.000000000000000000000000000000	15	t	6b828940-7fc0-449f-8a26-f91d237a0940	2026-05-29 21:21:05.976	2026-05-29 21:21:05.976
 842755dd-1b31-4858-819d-73ae2db3648c	MES INSTRUCTOR	PLAN INSTRUCTOR	100.000000000000000000000000000000	30	t	6b828940-7fc0-449f-8a26-f91d237a0940	2026-05-29 21:47:23.016	2026-05-29 21:47:23.016
+\.
+
+
+--
+-- Data for Name: Product; Type: TABLE DATA; Schema: public; Owner: erp_user
+--
+
+COPY public."Product" (id, "companyId", "branchId", "productCategoryId", code, name, description, "costPrice", "salePrice", "isActive", "createdAt", "updatedAt") FROM stdin;
+\.
+
+
+--
+-- Data for Name: ProductCategory; Type: TABLE DATA; Schema: public; Owner: erp_user
+--
+
+COPY public."ProductCategory" (id, "companyId", name, description, "isActive", "createdAt", "updatedAt") FROM stdin;
 \.
 
 
@@ -3504,6 +3629,20 @@ dcc60587-5fde-4a3d-b783-d59bb2ced38b	e62342ab-62df-4a3a-b7db-82babac84b8c	4bd2cf
 e3f9c386-bbd9-42b2-b774-3832d40eb834	e62342ab-62df-4a3a-b7db-82babac84b8c	6bb4ba35-d763-4f61-bb02-73c217976f25
 002f2404-8704-42c3-b60f-ccfed9c261eb	e62342ab-62df-4a3a-b7db-82babac84b8c	e49620db-e84c-47bf-91a0-ff8867c8f412
 5c4d6d96-1b8d-4d5f-a784-c3b5a96d986b	e62342ab-62df-4a3a-b7db-82babac84b8c	4b5427f7-1569-4f59-ac2f-4901081ec4ff
+4ca85107-49f0-487a-b47a-437bb06438a4	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	082e2a7a-eff6-44a1-b604-c2ab1edc95b5
+9678248e-8c85-4c44-bb35-72cb897b9075	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	9c876750-36f2-468e-a198-e10a9626cd00
+c8e1c3c5-533b-4a17-ae26-93a6b5867f12	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	0f2dec1d-907c-4191-bc9a-acb18f6378a8
+51e9b837-188d-4848-8d19-9d4268ce7f35	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	8f935806-88ce-43c1-9ada-4336968d1c04
+36e7ffed-b738-466c-9f26-9dbf46bc5ab2	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	4bd2cf4f-9ba3-4d3a-a73f-2c558b2df365
+cab99199-d45a-4674-af72-dd9ccf536c7e	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	dcde9549-77da-4227-ada0-35f7565804ef
+d5c5f2da-b3a4-4851-b479-bffaa3f35b23	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	375daabc-e2c9-435e-b007-18245e5f2d0d
+974d371b-3fce-4f21-adc3-8bc007a9d2b5	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	0c38eda9-3781-4a72-93cc-810b51caf9c7
+03cd8d00-5ca1-4abd-889a-25c69a46851f	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	bd9349cc-fc82-410f-8136-672a3f416fe1
+32beaa51-930f-4cd7-9d64-f2521a957ffd	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	1d458a77-9b8d-4ebc-9931-97a7e74cf21c
+88bc01bb-07a9-4e05-8ec3-7738b64a3661	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	b645a3fc-7edd-4e3a-85f8-26469b2d0037
+8d386492-4095-4a2e-abae-4c30dc9dbb51	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	79bef71b-18e5-4691-a2e4-be34146e9fc9
+2f419c74-c64d-4271-bc63-a1b8570e4345	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	73e7330e-50a3-47e3-b86a-e80bf691db07
+7486588d-083c-4197-86bf-9ea019209fa9	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	3c4c0349-cd46-4557-aa21-ced1ef68a054
 6d9e90d6-1a67-4e65-b0af-dc57f63330bd	c7b89eb2-26a7-4d98-8782-9bf2c8a3f03a	4bd2cf4f-9ba3-4d3a-a73f-2c558b2df365
 e862c476-b6f3-46b2-a594-edc2e77bf295	c7b89eb2-26a7-4d98-8782-9bf2c8a3f03a	375daabc-e2c9-435e-b007-18245e5f2d0d
 b4fabbb1-61a4-4ed5-8459-e6ca90edb423	c7b89eb2-26a7-4d98-8782-9bf2c8a3f03a	0c38eda9-3781-4a72-93cc-810b51caf9c7
@@ -3519,39 +3658,33 @@ b880b2dd-5121-4111-90c6-c915edcd0888	c7b89eb2-26a7-4d98-8782-9bf2c8a3f03a	e0df5c
 d0120a21-adaa-491a-b605-f0af293bfef1	c7b89eb2-26a7-4d98-8782-9bf2c8a3f03a	0f2dec1d-907c-4191-bc9a-acb18f6378a8
 445c6147-9704-4b43-aae4-b7dd5785db8b	c7b89eb2-26a7-4d98-8782-9bf2c8a3f03a	8f935806-88ce-43c1-9ada-4336968d1c04
 e2cee501-5e99-4931-a3ad-c99ea27a5bd7	c7b89eb2-26a7-4d98-8782-9bf2c8a3f03a	8906ae3f-dacf-4ba5-a2c6-e2e9c65f91a4
-8a83bcdd-183b-40a7-8e10-fb158d9751e0	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	bd9349cc-fc82-410f-8136-672a3f416fe1
-b8c2ad03-7bc5-4c0d-8ed9-f435d0e3247b	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	1d458a77-9b8d-4ebc-9931-97a7e74cf21c
-b8594eea-819b-4eae-b542-2eb7e089c470	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	b645a3fc-7edd-4e3a-85f8-26469b2d0037
-edeb95b4-dd00-4d32-a0dd-4015ba3c6ea4	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	79bef71b-18e5-4691-a2e4-be34146e9fc9
-0bcc45d2-942b-4b62-87e9-75147583aa4e	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	73e7330e-50a3-47e3-b86a-e80bf691db07
-a91f75d6-2d5c-4250-9916-5819e75ae1ab	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	e738238a-eb71-4323-8b30-5fb7a7d30b14
-c055fa1e-b946-4bb5-b1fd-aea03aa15648	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	23a9c166-1a7a-4ef1-b026-61af37645e3b
-0df51af6-240d-463c-b140-75c614f5fc57	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	88b7d5b1-974c-41b0-8b38-d4dcb0ceeb2f
-58ea1cf8-7bf0-4deb-be97-cac080add2b9	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	94e4347f-16ae-43ad-b334-8cad426f5562
-5776db7e-e77e-4458-aea6-3ad57af7283a	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	d1fbb067-418d-4f1d-bd9b-ae25fa98e593
-2f951b24-bfe0-4e23-bdbc-857de5948de4	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	e0df5c84-efae-4efb-9145-e2cf00cd80dd
-3b09ff2e-2da4-44d4-b951-6a842f24b073	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	3415b815-1065-4c7f-93e3-afd53b84c557
-5c26b4d9-f562-4040-bbad-871ae504eafa	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	1202de82-2216-4467-8f56-2666bf2f3448
-9e1a6cd3-a195-46b1-80c4-b01eca6d4f35	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	292ab621-eb16-45e2-9872-3d475315817b
-92de83f8-0aa2-4051-8b40-d283bdf3a06c	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	4f140291-f5f7-487b-a0a2-a34881d51517
-39f1630a-6ba0-4067-a342-f71dd6e05d83	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	082dcb9f-6381-4bca-9b3c-a4ef3dcbb706
-e0c878cc-3639-45cb-9786-fe9ed3e09430	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	082e2a7a-eff6-44a1-b604-c2ab1edc95b5
-c095771e-4770-49cd-ab54-6024e3f202f1	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	9c876750-36f2-468e-a198-e10a9626cd00
-10336e4a-37dd-4406-99a1-4599ee0cd510	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	0f2dec1d-907c-4191-bc9a-acb18f6378a8
-32e63cd9-4542-4386-89b5-b41aae373352	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	8f935806-88ce-43c1-9ada-4336968d1c04
-f3517565-e894-4112-93ed-8c5948afab7d	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	4bd2cf4f-9ba3-4d3a-a73f-2c558b2df365
-45fe578e-8594-424f-a79f-3cc2e0de9e43	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	dcde9549-77da-4227-ada0-35f7565804ef
-1e42a88a-6ead-4132-b601-b616466c675e	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	375daabc-e2c9-435e-b007-18245e5f2d0d
-2f7a4956-73a1-4f43-8a6d-d34b3ef4e41f	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	0c38eda9-3781-4a72-93cc-810b51caf9c7
-4b78cb83-30cb-4ee6-898b-5b03a326e79d	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	3c4c0349-cd46-4557-aa21-ced1ef68a054
-03332524-6cfc-4d95-8966-58c73c93672d	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	8906ae3f-dacf-4ba5-a2c6-e2e9c65f91a4
-d53ba011-4a1d-458a-b4f5-3efd9eb6f568	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	3f2b4874-7cfb-41dc-a7b8-bb5daa4c0735
-5ec61ff3-da76-444c-9b58-e449d3359524	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	6bb4ba35-d763-4f61-bb02-73c217976f25
-6a41ac43-7967-42f2-b994-84aac1d8314e	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	b3bc1161-8c43-4264-a60d-619e05cda55e
-75c02388-45db-4432-8e61-4b21eb7a51ec	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	f3e6cf31-7278-4581-a485-28064fb99b5c
-4f005201-8281-453a-859b-d0df8e7d5929	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	850ae969-9f55-41ca-bb53-80066d012323
-1754d875-9234-496a-b78f-76d5a62a5f04	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	e49620db-e84c-47bf-91a0-ff8867c8f412
-08048d1f-c524-4b68-a0b2-1a88a853e203	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	4b5427f7-1569-4f59-ac2f-4901081ec4ff
+1eaf56e1-7f48-483a-a8dd-de84c7ff0ed3	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	8906ae3f-dacf-4ba5-a2c6-e2e9c65f91a4
+e8ff3f3f-819d-4ff1-9ac0-c953abab0ab9	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	3f2b4874-7cfb-41dc-a7b8-bb5daa4c0735
+e145c4fc-367c-463c-a21b-be40d43fa255	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	e49620db-e84c-47bf-91a0-ff8867c8f412
+cb5563fc-7e40-41fb-b6f8-09030a490ed5	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	6bb4ba35-d763-4f61-bb02-73c217976f25
+b96a6fc8-331f-46aa-a8ce-d043c43f2858	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	b3bc1161-8c43-4264-a60d-619e05cda55e
+46c53f9e-fe7f-4b72-b28c-8735e5db0d4f	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	f3e6cf31-7278-4581-a485-28064fb99b5c
+6a373b6b-6f02-4618-a0e1-d9a81ca6836a	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	850ae969-9f55-41ca-bb53-80066d012323
+1923b537-0c1c-4ae7-b01f-2861e2fa001d	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	4b5427f7-1569-4f59-ac2f-4901081ec4ff
+67f78210-dbe9-49c7-82ca-82acc522786f	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	7c8eceef-79c0-45b2-b488-fba5e0416d10
+93d59f97-e7ba-48d4-b6a3-30605101e6af	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	4f9d90c9-6937-400c-8558-42084a010f6b
+55f01366-1f81-4023-a9f5-62a6f7fb0be3	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	9e60af65-3197-4112-b983-b1d3054b3edf
+e3d2a070-cd19-4911-b482-dbac5ef402db	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	6b75f613-c410-4f85-b4a4-6a620b489e19
+d9454ccd-ef0a-4d89-8f3a-5ce4f8793a8a	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	486d0feb-f43c-4e96-994c-7319239c112c
+025296df-e8e2-41af-9df4-b520411840c3	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	e738238a-eb71-4323-8b30-5fb7a7d30b14
+ef69076d-00e7-4c00-9e89-553f04c1534c	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	23a9c166-1a7a-4ef1-b026-61af37645e3b
+f06d5695-7f36-4469-aeef-69793b444ed4	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	88b7d5b1-974c-41b0-8b38-d4dcb0ceeb2f
+a873fada-96aa-450a-b124-dab39c27f81a	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	94e4347f-16ae-43ad-b334-8cad426f5562
+a0571428-8ea6-4aba-a716-865ce88313af	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	d1fbb067-418d-4f1d-bd9b-ae25fa98e593
+143c5ada-ee93-47ac-8181-e93a55737ab4	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	e0df5c84-efae-4efb-9145-e2cf00cd80dd
+181adc86-42da-480d-b2eb-16237309aea8	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	3415b815-1065-4c7f-93e3-afd53b84c557
+6e94cdab-e37a-4ecb-8e85-03e44a5a3460	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	1202de82-2216-4467-8f56-2666bf2f3448
+2e5ee7e8-4710-439e-935f-78fa0a727ac1	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	292ab621-eb16-45e2-9872-3d475315817b
+9c2e301a-9b6b-4c7a-af9d-7c599bcb26c9	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	4f140291-f5f7-487b-a0a2-a34881d51517
+66d345ee-7a06-437e-afa1-97b020db78a6	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	51bf6d97-0c9b-4006-9062-e3a57c83c30a
+071d74eb-c267-48da-91d9-8cf6b496611b	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	082dcb9f-6381-4bca-9b3c-a4ef3dcbb706
+8aade7d7-b1f1-4b6c-abb6-e31a4ffb7fb9	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	f0ccf010-1d3e-424a-9703-705511ceb534
+635df0d1-762b-4fbf-b7e1-4d285342be94	200c21f0-06d7-4ab2-b7b7-ca5cd6f22a23	1d3ea5ec-ba24-49d1-a39a-20d054fe69b0
 7b4e5d2e-ebac-4584-b1c9-2e6ad0ad465b	8f9470e0-20d8-4306-b280-febaf514e6bb	e0df5c84-efae-4efb-9145-e2cf00cd80dd
 9e5df5cc-3b46-4fbe-9162-8489896e50b9	8f9470e0-20d8-4306-b280-febaf514e6bb	3415b815-1065-4c7f-93e3-afd53b84c557
 8b00d4a9-8d23-4e75-8ea6-1efcc59ffa20	8f9470e0-20d8-4306-b280-febaf514e6bb	1202de82-2216-4467-8f56-2666bf2f3448
@@ -3594,10 +3727,10 @@ b1ad3e80-9fea-482b-b74e-65dd1da18cb1	8f9470e0-20d8-4306-b280-febaf514e6bb	e49620
 
 COPY public."User" (id, email, password, "fullName", "isActive", "companyId", "createdAt", "updatedAt", "branchId", "isOwner") FROM stdin;
 543856ad-d4b6-4be7-93b5-e9bf0052c782	caja_mutualista@metafit.com	$2b$10$p/j/T5F8wUhfw3TkZ9AIuuuVaaHxU4x1FB7n8o69gP8zq/BB6Mobu	Caja Mutualista	t	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-07 23:04:51.24	2026-05-07 23:04:51.24	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	f
-7abf7f31-0cf6-48e0-a1a2-697de2a0b166	admin@erp.com	$2b$10$7gqTjvEq4ggApOcLI9AOK.sKidaEJ1S/Jqun30uBcHCCvW.7bkWaa	Super Admin	t	6b293f8f-beec-4a45-9b22-98ceabe0f3a1	2026-05-05 14:44:21.821	2026-05-16 07:45:03.195	1b9b384c-0715-4247-b718-6738efe86c89	f
-a484e2d7-a009-4c8a-8237-b3323c036405	admin@metafit.com	$2b$10$f7bSYzVrhad4aSjdch51c.oQkGzJFkyO7Xq3xwH0JKZhBCIZDozRy	Administración	t	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-07 22:35:11.664	2026-05-16 07:46:49.327	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	t
 b34eadb5-350e-4c72-8153-fab9cd740c7f	caja_infinity@infinity.com	$2b$10$8.Odfu9LGJdmtV.vQ7vnB.CEuwbh/E80mF6h0Q4bgHCigBTYQrv3.	Caja Infinity	t	6b828940-7fc0-449f-8a26-f91d237a0940	2026-05-11 07:23:55.792	2026-05-29 19:36:15.704	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee	f
 7cead38c-acae-416c-9ed0-83f8287b4f35	admin@infinity.com	$2b$10$Fbvie7zhg1oRvPz08SBoP.k/Hf4X5T5kHQnn4IyedW8nJbbq/spzG	Administracion	t	6b828940-7fc0-449f-8a26-f91d237a0940	2026-05-05 14:46:06.651	2026-05-29 19:36:44.59	0126e6f3-8d6c-4eae-b36d-18bb7b8cb8ee	t
+7abf7f31-0cf6-48e0-a1a2-697de2a0b166	admin@erp.com	$2b$10$oa.QFuULSObm96p9D9thr.pXUPllveTD9zKCIkdcT9aCLoZIsUzqi	Super Admin	t	6b293f8f-beec-4a45-9b22-98ceabe0f3a1	2026-05-05 14:44:21.821	2026-05-30 06:51:23.862	1b9b384c-0715-4247-b718-6738efe86c89	f
+a484e2d7-a009-4c8a-8237-b3323c036405	admin@metafit.com	$2b$10$f7bSYzVrhad4aSjdch51c.oQkGzJFkyO7Xq3xwH0JKZhBCIZDozRy	Administración	t	ba873a42-909b-47cf-8bd7-15caaf87fd46	2026-05-07 22:35:11.664	2026-05-30 06:57:01.646	aeb8a3c9-39fd-4fe4-8213-a3aaf576b3a2	t
 \.
 
 
@@ -3647,6 +3780,7 @@ c0106f77-0e83-46f0-a713-796f0a519367	38d8089c3fafda125e602b33235b3e2713fe2a879a5
 1b17d263-8957-4c4d-83b6-341594f992b7	b2bec6e7aaac757087fa44544bf08211a099dff716df30356c16adcaa0c710f9	2026-05-11 06:47:15.633569+00	20260507051710_init		\N	2026-05-11 06:47:15.633569+00	0
 96f95325-626d-4cc4-b9da-44fb334dcd09	2e8c83d49712849da499d21ce47be1bd486eacfb3ca5f8a30b4acee3d89b902a	2026-05-18 07:21:46.624441+00	20260518065632_add_annulled_status	\N	\N	2026-05-18 07:21:46.462631+00	1
 81bb7985-f752-4f71-9bbf-56cdb6e98512	5c8cf9671150a87b37acbf584a37cbfede52f13d81fa07e1f90b9c80bf3e99b7	2026-05-18 07:36:28.283398+00	20260518073410_add_annulled_status2	\N	\N	2026-05-18 07:36:28.151315+00	1
+5d76b8b5-f036-44b4-b17f-f08db68102c0	cfc006e15ea66b8f135fb9ab31b8f8532c5bd555a8aa0037a493a23200b863ee	2026-05-30 03:34:39.147495+00	20260530032503_add_inventory_module	\N	\N	2026-05-30 03:34:38.909466+00	1
 \.
 
 
@@ -3707,6 +3841,14 @@ ALTER TABLE ONLY public."Device"
 
 
 --
+-- Name: InventoryMovement InventoryMovement_pkey; Type: CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."InventoryMovement"
+    ADD CONSTRAINT "InventoryMovement_pkey" PRIMARY KEY (id);
+
+
+--
 -- Name: MembershipSale MembershipSale_pkey; Type: CONSTRAINT; Schema: public; Owner: erp_user
 --
 
@@ -3736,6 +3878,22 @@ ALTER TABLE ONLY public."Permission"
 
 ALTER TABLE ONLY public."Plan"
     ADD CONSTRAINT "Plan_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ProductCategory ProductCategory_pkey; Type: CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."ProductCategory"
+    ADD CONSTRAINT "ProductCategory_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Product Product_pkey; Type: CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."Product"
+    ADD CONSTRAINT "Product_pkey" PRIMARY KEY (id);
 
 
 --
@@ -3919,6 +4077,27 @@ CREATE INDEX "Device_companyId_idx" ON public."Device" USING btree ("companyId")
 
 
 --
+-- Name: InventoryMovement_branchId_idx; Type: INDEX; Schema: public; Owner: erp_user
+--
+
+CREATE INDEX "InventoryMovement_branchId_idx" ON public."InventoryMovement" USING btree ("branchId");
+
+
+--
+-- Name: InventoryMovement_companyId_idx; Type: INDEX; Schema: public; Owner: erp_user
+--
+
+CREATE INDEX "InventoryMovement_companyId_idx" ON public."InventoryMovement" USING btree ("companyId");
+
+
+--
+-- Name: InventoryMovement_productId_idx; Type: INDEX; Schema: public; Owner: erp_user
+--
+
+CREATE INDEX "InventoryMovement_productId_idx" ON public."InventoryMovement" USING btree ("productId");
+
+
+--
 -- Name: MembershipSale_endDate_idx; Type: INDEX; Schema: public; Owner: erp_user
 --
 
@@ -3951,6 +4130,34 @@ CREATE UNIQUE INDEX "Permission_code_key" ON public."Permission" USING btree (co
 --
 
 CREATE UNIQUE INDEX "Plan_name_companyId_key" ON public."Plan" USING btree (name, "companyId");
+
+
+--
+-- Name: ProductCategory_companyId_idx; Type: INDEX; Schema: public; Owner: erp_user
+--
+
+CREATE INDEX "ProductCategory_companyId_idx" ON public."ProductCategory" USING btree ("companyId");
+
+
+--
+-- Name: Product_branchId_idx; Type: INDEX; Schema: public; Owner: erp_user
+--
+
+CREATE INDEX "Product_branchId_idx" ON public."Product" USING btree ("branchId");
+
+
+--
+-- Name: Product_companyId_idx; Type: INDEX; Schema: public; Owner: erp_user
+--
+
+CREATE INDEX "Product_companyId_idx" ON public."Product" USING btree ("companyId");
+
+
+--
+-- Name: Product_productCategoryId_idx; Type: INDEX; Schema: public; Owner: erp_user
+--
+
+CREATE INDEX "Product_productCategoryId_idx" ON public."Product" USING btree ("productCategoryId");
 
 
 --
@@ -4108,6 +4315,30 @@ ALTER TABLE ONLY public."Device"
 
 
 --
+-- Name: InventoryMovement InventoryMovement_branchId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."InventoryMovement"
+    ADD CONSTRAINT "InventoryMovement_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES public."Branch"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: InventoryMovement InventoryMovement_companyId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."InventoryMovement"
+    ADD CONSTRAINT "InventoryMovement_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES public."Company"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: InventoryMovement InventoryMovement_productId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."InventoryMovement"
+    ADD CONSTRAINT "InventoryMovement_productId_fkey" FOREIGN KEY ("productId") REFERENCES public."Product"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
 -- Name: MembershipSale MembershipSale_branchId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: erp_user
 --
 
@@ -4161,6 +4392,38 @@ ALTER TABLE ONLY public."Partner"
 
 ALTER TABLE ONLY public."Plan"
     ADD CONSTRAINT "Plan_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES public."Company"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ProductCategory ProductCategory_companyId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."ProductCategory"
+    ADD CONSTRAINT "ProductCategory_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES public."Company"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: Product Product_branchId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."Product"
+    ADD CONSTRAINT "Product_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES public."Branch"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: Product Product_companyId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."Product"
+    ADD CONSTRAINT "Product_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES public."Company"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: Product Product_productCategoryId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: erp_user
+--
+
+ALTER TABLE ONLY public."Product"
+    ADD CONSTRAINT "Product_productCategoryId_fkey" FOREIGN KEY ("productCategoryId") REFERENCES public."ProductCategory"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -4238,5 +4501,5 @@ REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict xDBdtxVS1elpxBmzZCfJX7Y8rFiSEMP08pKoGZ4deF4t9RTNSMCP4VNgQheNKnN
+\unrestrict Oq9OkX0e2UZD7hvAteDd3BrtWf2qG54w7oLmipHhJsmx1yp6rPfZUChdBwfqOl2
 

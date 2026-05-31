@@ -306,6 +306,16 @@ for (const role of roles) {
       description: "Eliminar productos",
       scope: "TENANT",
     },
+    {
+      code: "TENANT_INVENTORY_VIEW",
+      description: "Ver movimientos de inventario",
+      scope: "TENANT",
+    },
+    {
+      code: "TENANT_INVENTORY_CREATE",
+      description: "Registrar movimientos de inventario",
+      scope: "TENANT",
+    },
   ];
 
   for (const perm of tenantPermissions) {
