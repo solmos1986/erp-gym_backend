@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { sendCommandToAgent, notifyFrontend } from '../../lib/websocket.server.js';
+import { sendCommandToAgent, notifyFrontend } from "../../lib/websocket.server.js";
+import { createCashMovementPayments } from "../../utils/payment.helper.js";
 const prisma = new PrismaClient();
 
 // helper
@@ -28,10 +29,10 @@ export const purchase = async ({
   planId,
   companyId,
   branchId,
-  userId // 👈 NUEVO (vendedor)
+  userId, //👈 NUEVO (vendedor)
+  payments
 }) => {
   return await prisma.$transaction(async (tx) => {
-
     // 🔍 validar cliente
     const partner = await tx.partner.findFirst({
       where: { id: partnerId, companyId }
@@ -44,32 +45,50 @@ export const purchase = async ({
     });
     if (!plan) throw new Error("Plan no encontrado");
 
-    // 🔍 validar usuario (vendedor) 👈 NUEVO
+    // 🔍 validar usuario (vendedor)
     const user = await tx.user.findFirst({
       where: { id: userId, companyId }
     });
     if (!user) throw new Error("Usuario vendedor no válido");
-    
+    if (!payments || payments.length === 0) {
+      throw new Error("Debe registrar al menos un método de pago");
+    }
+    // 🔍 validar caja abierta
+    const cashRegister = await tx.cashRegister.findFirst({
+      where: {
+        companyId,
+        branchId,
+        status: "OPEN"
+      }
+    });
+
+    if (!cashRegister) {
+      throw new Error("Debe existir una caja abierta para realizar ventas");
+    }
     const today = new Date();
     let startDate;
     let endDate;
     let startDateMembershipSale;
-   
+
     // 🔍 membresía actual
     const current = await tx.customerMembership.findUnique({
       where: { customerId: partnerId }
     });
 
     if (current && current.endDate >= today) {
-       startDate = startOfDay(current.startDate);
+      startDate = startOfDay(current.startDate);
       startDateMembershipSale = startOfDay(current.endDate);
-      endDate = endOfDay(addDays(startDateMembershipSale, plan.durationDays) );
+      endDate = endOfDay(addDays(startDateMembershipSale, plan.durationDays));
     } else {
       startDate = startOfDay(today);
       endDate = endOfDay(addDays(startDate, plan.durationDays));
       startDateMembershipSale = startOfDay(startDate);
     }
-   
+    const totalPayments = payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
+
+    if (totalPayments !== Number(plan.price)) {
+      throw new Error("Los pagos no coinciden con el total de la venta");
+    }
     // 🧱 upsert membresía
     const membership = await tx.customerMembership.upsert({
       where: { customerId: partnerId },
@@ -86,14 +105,65 @@ export const purchase = async ({
         branch: { connect: { id: branchId } }
       }
     });
+    const lastSale = await tx.sale.findFirst({
+      where: {
+        companyId,
+        branchId
+      },
+      orderBy: {
+        saleNumber: "desc"
+      },
+      select: {
+        saleNumber: true
+      }
+    });
+
+    const nextSaleNumber = (lastSale?.saleNumber || 0) + 1;
+
+    const commercialSale = await tx.sale.create({
+      data: {
+        companyId,
+        branchId,
+
+        customerId: partnerId,
+        userId, // 🔥 FALTA ESTO
+        saleNumber: nextSaleNumber,
+
+        saleDate: new Date(),
+
+        subtotal: plan.price,
+        discount: 0,
+        total: plan.price,
+
+        status: "CONFIRMED"
+      }
+    });
+    await tx.saleDetail.create({
+      data: {
+        saleId: commercialSale.id,
+
+        itemType: "MEMBERSHIP_PLAN",
+
+        itemId: plan.id,
+
+        description: `${plan.name} (${startDateMembershipSale.toISOString().slice(0, 10)} - ${endDate.toISOString().slice(0, 10)})`,
+
+        quantity: 1,
+
+        unitPrice: plan.price,
+        unitCost: 0,
+        total: plan.price
+      }
+    });
 
     // 💰 crear venta (MEJORADA)
-    const sale = await tx.membershipSale.create({
+    const membershipSale = await tx.membershipSale.create({
       data: {
         partnerId,
         planId,
         companyId,
         branchId, // 👈 opcional pero recomendado
+        saleId: commercialSale.id,
         startDate: startDateMembershipSale,
         endDate,
         price: plan.price,
@@ -102,95 +172,81 @@ export const purchase = async ({
         userId: userId // 👈 NUEVO (clave 🔥)
       }
     });
+    await createCashMovementPayments({
+      tx,
 
-    // // 🔥 SYNC MEMBERSHIP
-    // await tx.command.create({
-    //   data: {
-    //     type: "SYNC_MEMBERSHIP",
-    //     payload: {
-    //       membershipId: membership.id,
-    //       clientId: partnerId,
-    //       name: partner.name,
-    //       startDate: startDate.toISOString(),
-    //       endDate: endDate.toISOString()
-    //     },
-    //     membershipSaleId: sale.id,
-    //     companyId,
-    //     branchId
-    //   }
-    // });
+      companyId,
+      branchId,
 
+      userId,
+
+      cashRegisterId: cashRegister.id,
+      referenceId: commercialSale.id,
+      movementType: "INCOME",
+
+      referenceType: "MEMBERSHIP_SALE",
+
+      description: `Venta Membresía #${commercialSale.saleNumber}`,
+
+      payments
+    });
     // // 🔥 SYNC FACE
-     const baseUrl = process.env.BASE_URL;
+    const baseUrl = process.env.BASE_URL;
 
-    // await tx.command.create({
-    //   data: {
-    //     type: "SYNC_FACE",
-    //     payload: {
-    //       userId: partnerId,
-    //       name: partner.name,
-    //       imagePath: partner.imageUrl
-    //         ? `${baseUrl}/${partner.imageUrl}`
-    //         : null
-    //     },
-    //     membershipSaleId: sale.id,
-    //     companyId,
-    //     branchId
-    //   }
-    // });
     // 🔥 SYNC USER FULL (usuario + rostro)
-await tx.command.create({
-  data: {
-    type: "SYNC_USER_FULL",
-    payload: {
-      userId: partnerId,
-      name: partner.name,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      imagePath: partner.imageUrl
-        ? `${baseUrl}/${partner.imageUrl}`
-        : null
-    },
-    membershipSaleId: sale.id,
-    companyId,
-    branchId
-  }
-});
-sendCommandToAgent(companyId, branchId, {
-  type: 'SYNC'
-});
-notifyFrontend({
-  type: "MEMBERSHIP_UPDATE"
-});
-    // 🔥 NOTIFICAR AL AGENT
-//sendCommandToAgent({
-  //companyId: command.companyId,
-  //branchId: command.branchId,
-  //payload: command
-//});
+    await tx.command.create({
+      data: {
+        type: "SYNC_USER_FULL",
+        payload: {
+          userId: partnerId,
+          name: partner.name,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          imagePath: partner.imageUrl ? `${baseUrl}/${partner.imageUrl}` : null
+        },
+        membershipSaleId: membershipSale.id,
+        companyId,
+        branchId
+      }
+    });
+    sendCommandToAgent(companyId, branchId, {
+      type: "SYNC"
+    });
+    notifyFrontend({
+      type: "MEMBERSHIP_UPDATE"
+    });
 
-    return { sale, membership };
+    return {
+      sale: commercialSale,
+      membershipSale,
+      membership
+    };
   });
 };
 // =========================
 // 📋 HISTORIAL
 // =========================
 export const getAll = async (req) => {
-  const { companyId } = req.user;
+  const { companyId, branchId: userBranchId, isOwner } = req.user;
 
-  const { search, planId, userId, status, from, to } = req.query;
-  console.log({ search, planId, userId, status, from, to });
+  const { search, planId, userId, branchId, status, from, to } = req.query;
+
   const where = {
     companyId
   };
-  
+  // 🏢 SUCURSAL
+  if (!isOwner) {
+    where.branchId = userBranchId;
+  } else if (branchId) {
+    where.branchId = branchId;
+  }
 
   // 🔎 Cliente
   if (search) {
     where.partner = {
       name: {
         contains: search,
-        mode: 'insensitive'
+        mode: "insensitive"
       }
     };
   }
@@ -205,31 +261,49 @@ export const getAll = async (req) => {
     where.userId = userId;
   }
 
-  // 📅 FECHA DE VENTA (AQUÍ VA 👇)
-  if (from && to) {
-    const start = new Date(from);
-    start.setHours(0, 0, 0, 0);
+  // 📅 FECHA DE VENTA
 
-    const end = new Date(to);
-    end.setHours(23, 59, 59, 999);
+  if (!from && !to) {
+    const last30Days = new Date();
+
+    last30Days.setDate(last30Days.getDate() - 30);
+
+    last30Days.setHours(0, 0, 0, 0);
 
     where.saleDate = {
-      gte: start,
-      lte: end
+      gte: last30Days
     };
+  } else {
+    where.saleDate = {};
+
+    if (from) {
+      const start = new Date(from);
+
+      start.setHours(0, 0, 0, 0);
+
+      where.saleDate.gte = start;
+    }
+
+    if (to) {
+      const end = new Date(to);
+
+      end.setHours(23, 59, 59, 999);
+
+      where.saleDate.lte = end;
+    }
   }
 
   // 🟢 Estado
   const now = new Date();
 
   // 🟢 Estado
-if (status) {
-  where.status = status;
-} else {
-  where.status = {
-    in: ['ACTIVE', 'EXPIRED']
-  };
-}
+  if (status) {
+    where.status = status;
+  } else {
+    where.status = {
+      in: ["ACTIVE", "EXPIRED"]
+    };
+  }
 
   return await prisma.membershipSale.findMany({
     where,
@@ -242,7 +316,7 @@ if (status) {
       branch: true
     },
     orderBy: {
-      saleDate: 'desc'
+      saleDate: "desc"
     }
   });
 };
@@ -250,18 +324,32 @@ if (status) {
 // 🔍 DETALLE
 // =========================
 export const getById = async (id, req) => {
+  const { companyId, branchId, isOwner } = req.user;
+
   const membership = await prisma.membershipSale.findFirst({
     where: {
       id,
-      companyId: req.user.companyId
+      companyId,
+
+      ...(isOwner
+        ? {}
+        : {
+            branchId
+          })
     },
+
     include: {
       partner: true,
-      plan: true
+      plan: true,
+      user: true,
+      branch: true,
+      company: true
     }
   });
 
-  if (!membership) throw new Error("Membresía no encontrada");
+  if (!membership) {
+    throw new Error("Membresía no encontrada");
+  }
 
   return membership;
 };
@@ -293,36 +381,33 @@ export const getAllStatus = async (companyId) => {
     include: {
       customer: true
     },
-    orderBy: { endDate: 'asc' }
+    orderBy: { endDate: "asc" }
   });
 };
 // =========================
 // 🔄 REINTENTAR PAGO
 // =========================
-export const retryMembershipSale = async ({
-  membershipSaleId,
-  companyId,
-}) => {
-  
+export const retryMembershipSale = async ({ membershipSaleId, companyId }) => {
   return await prisma.command.updateMany({
     where: {
       membershipSaleId,
       companyId,
-      status: 'ERROR', // luego podemos mejorar esto
+      branchId,
+      status: "ERROR" // luego podemos mejorar esto
     },
     data: {
-      status: 'PENDING',
+      status: "PENDING",
       attempts: 0,
       error: null,
-      executedAt: null,
-    },
+      executedAt: null
+    }
   });
 };
 //=========================
 // SYNC CUSTOMER MEMBERSHIP STATUS
 //=========================
 
-export const syncMembershipStatus = async ({ customerId, companyId }) => {
+export const syncMembershipStatus = async ({ customerId, companyId, branchId }) => {
   const now = new Date();
 
   // 1. Traer membership + customer
@@ -335,8 +420,8 @@ export const syncMembershipStatus = async ({ customerId, companyId }) => {
       customer: {
         select: {
           id: true,
-          name: true,          // ajusta si usas firstName/lastName
-          imageUrl: true      // ajusta nombre real del campo
+          name: true, // ajusta si usas firstName/lastName
+          imageUrl: true // ajusta nombre real del campo
         }
       }
     }
@@ -344,167 +429,60 @@ export const syncMembershipStatus = async ({ customerId, companyId }) => {
 
   // 2. Validaciones básicas
   if (!membership) {
-    throw new Error('MEMBERSHIP_NOT_FOUND');
+    throw new Error("MEMBERSHIP_NOT_FOUND");
   }
 
   // 3. Calcular estado REAL
-  const isActive =
-    membership.startDate <= now &&
-    membership.endDate >= now;  
+  const isActive = membership.startDate <= now && membership.endDate >= now;
 
- const baseUrl = process.env.BASE_URL;
- await prisma.$transaction(async (tx) => {
-  await tx.command.create({
-    data: {
-      type: "SYNC_USER_FULL",
-      payload: {
-        userId: membership.customer.id,
-        name: membership.customer.name,
-        startDate: membership.startDate.toISOString(),
-        endDate: membership.endDate.toISOString(),
-        imagePath: membership.customer.imageUrl
-          ? `${baseUrl}/${membership.customer.imageUrl}`
-          : null
-      },
-      companyId,
-      branchId: membership.branchId
-    }
+  const baseUrl = process.env.BASE_URL;
+  await prisma.$transaction(async (tx) => {
+    await tx.command.create({
+      data: {
+        type: "SYNC_USER_FULL",
+        payload: {
+          userId: membership.customer.id,
+          name: membership.customer.name,
+          startDate: membership.startDate.toISOString(),
+          endDate: membership.endDate.toISOString(),
+          imagePath: membership.customer.imageUrl ? `${baseUrl}/${membership.customer.imageUrl}` : null
+        },
+        companyId,
+        branchId
+      }
+    });
   });
-});
 
-sendCommandToAgent({
-  companyId,
-  branchId: membership.branchId,
-  payload: 'SYNC'
-});
-notifyFrontend({
-  type: "MEMBERSHIP_UPDATE"
-});
+  sendCommandToAgent({
+    companyId,
+    branchId,
+    payload: "SYNC"
+  });
+  notifyFrontend({
+    type: "MEMBERSHIP_UPDATE"
+  });
 
   return {
     success: true
   };
 };
-//=========================
-// ASSIGN CUSTOMER MEMBERSHIP
-//=========================
-// export const assignMembership = async ({
-//   customerId,
-//   companyId,
-//   branchId,
-//   startDate,
-//   endDate
-// }) => {
 
-//   // =====================
-//   // VALIDACIONES
-//   // =====================
-//   if (!customerId || !startDate || !endDate) {
-//     throw new Error('INVALID_DATA');
-//   }
-
-//   if (startDate > endDate) {
-//     throw new Error('INVALID_DATES');
-//   }
-
-//   // validar cliente
-//   const customer = await prisma.partner.findFirst({
-//     where: {
-//       id: customerId,
-//       companyId
-//     }
-//   });
-
-//   if (!customer) {
-//     throw new Error('CUSTOMER_NOT_FOUND');
-//   }
-
-//   // =====================
-//   // UPSERT MEMBERSHIP
-//   // =====================
-//   const membership = await prisma.customerMembership.upsert({
-//     where: {
-//       customerId
-//     },
-//     update: {
-//       startDate: startDate,
-//       endDate: endDate,
-//       status: 'ACTIVE',
-//       branchId
-//     },
-//     create: {
-//       customerId,
-//       companyId,
-//       branchId,
-//       startDate: startDate,
-//       endDate: endDate,
-//       status: 'ACTIVE'
-//     }
-//   });
-
-//   // =====================
-//   // CREAR COMMAND DIRECTO (igual que sync)
-//   // =====================
-//   const baseUrl = process.env.BASE_URL;
-
-//   await prisma.$transaction(async (tx) => {
-//     await tx.command.create({
-//       data: {
-//         type: "SYNC_USER_FULL",
-//         payload: {
-//           userId: customer.id,
-//           name: customer.name,
-//           startDate: startDate,
-//           endDate: endDate,
-//           imagePath: customer.imageUrl
-//             ? `${baseUrl}/${customer.imageUrl}`
-//             : null
-//         },
-//         companyId,
-//         branchId
-//       }
-//     });
-//   });
-
-//   // =====================
-//   // DISPARAR AGENT
-//   // =====================
-//   sendCommandToAgent(companyId, branchId, {
-//     type: 'SYNC'
-//   });
-
-//   notifyFrontend({
-//     type: "MEMBERSHIP_UPDATE"
-//   });
-
-//   return {
-//     success: true,
-//     membership
-//   };
-// };
-export const assignMembership = async ({
-  customerId,
-  companyId,
-  branchId,
-  startDate,
-  endDate
-}) => {
-
+export const assignMembership = async ({ customerId, companyId, branchId, startDate, endDate }) => {
   // =====================
   // VALIDACIONES
   // =====================
   if (!customerId || !startDate || !endDate) {
-    throw new Error('INVALID_DATA');
+    throw new Error("INVALID_DATA");
   }
 
   // =====================
   // NORMALIZAR FECHAS
   // =====================
-    const normalizedStartDate = startOfDay(startDate);
+  const normalizedStartDate = startOfDay(startDate);
   const normalizedEndDate = endOfDay(endDate);
 
   if (normalizedStartDate > normalizedEndDate) {
-    throw new Error('INVALID_DATES');
+    throw new Error("INVALID_DATES");
   }
   // validar cliente
   const customer = await prisma.partner.findFirst({
@@ -515,7 +493,7 @@ export const assignMembership = async ({
   });
 
   if (!customer) {
-    throw new Error('CUSTOMER_NOT_FOUND');
+    throw new Error("CUSTOMER_NOT_FOUND");
   }
 
   // =====================
@@ -528,7 +506,7 @@ export const assignMembership = async ({
     update: {
       startDate: normalizedStartDate,
       endDate: normalizedEndDate,
-      status: 'ACTIVE',
+      status: "ACTIVE",
       branchId
     },
     create: {
@@ -537,7 +515,7 @@ export const assignMembership = async ({
       branchId,
       startDate: normalizedStartDate,
       endDate: normalizedEndDate,
-      status: 'ACTIVE'
+      status: "ACTIVE"
     }
   });
 
@@ -555,9 +533,7 @@ export const assignMembership = async ({
           name: customer.name,
           startDate: normalizedStartDate,
           endDate: normalizedEndDate,
-          imagePath: customer.imageUrl
-            ? `${baseUrl}/${customer.imageUrl}`
-            : null
+          imagePath: customer.imageUrl ? `${baseUrl}/${customer.imageUrl}` : null
         },
         companyId,
         branchId
@@ -569,7 +545,7 @@ export const assignMembership = async ({
   // DISPARAR AGENT
   // =====================
   sendCommandToAgent(companyId, branchId, {
-    type: 'SYNC'
+    type: "SYNC"
   });
 
   notifyFrontend({
@@ -584,256 +560,263 @@ export const assignMembership = async ({
 //=========================
 // ANULAR MEMBERSHIP (SOFT DELETE)
 //=========================
-export const annulMembershipSale = async ({
-  saleId,
-  companyId,
-  branchId,
-  userId
-}) => {
+export const annulMembershipSale = async ({ saleId, companyId, branchId, userId, isOwner }) => {
+  return await prisma.$transaction(async (tx) => {
+    ////////////////////////////////////
+    // BUSCAR VENTA
+    ////////////////////////////////////
 
-  return await prisma.$transaction(
-    async (tx) => {
+    const where = {
+      id: saleId,
+      companyId
+    };
 
-      const sale =
-        await tx.membershipSale.findFirst({
+    if (!isOwner) {
+      where.branchId = branchId;
+    }
 
-        where: {
-          id: saleId,
-          companyId
-        },
+    const sale = await tx.membershipSale.findFirst({
+      where,
 
-        include: {
-          plan: true,
-          partner: true
-        }
-
-      });
-
-      if (!sale)
-        throw new Error(
-          'Inscripción no encontrada'
-        );
-
-      if (
-        sale.status ===
-        'ANNULLED'
-      ) {
-        throw new Error(
-          'Ya fue anulada'
-        );
+      include: {
+        plan: true,
+        partner: true,
+        sale: true
       }
+    });
 
-      // mismo día
-      const today = new Date();
+    if (!sale) {
+      throw new Error("Inscripción no encontrada");
+    }
 
-      if (
-        startOfDay(
-          sale.createdAt
-        ).getTime()
-        !==
-        startOfDay(
-          today
-        ).getTime()
-      ) {
-        throw new Error(
-          'Solo puede anularse el mismo día'
-        );
-      }
+    if (sale.status === "ANNULLED") {
+      throw new Error("Ya fue anulada");
+    }
 
-      ////////////////////////////////////
-      // CUSTOMER MEMBERSHIP
-      ////////////////////////////////////
+    ////////////////////////////////////
+    // SOLO MISMO DÍA
+    ////////////////////////////////////
 
-      const membership =
-        await tx.customerMembership
-        .findUnique({
+    const today = new Date();
 
-        where: {
-          customerId:
-            sale.partnerId
+    if (startOfDay(sale.createdAt).getTime() !== startOfDay(today).getTime()) {
+      throw new Error("Solo puede anularse el mismo día");
+    }
+
+    ////////////////////////////////////
+    // VALIDAR CAJA ABIERTA
+    ////////////////////////////////////
+
+    const cashMovement = await tx.cashMovement.findFirst({
+      where: {
+        companyId,
+        referenceId: sale.saleId
+      },
+
+      include: {
+        cashRegister: {
+          select: {
+            id: true,
+            status: true
+          }
         }
+      }
+    });
 
-      });
+    if (cashMovement && cashMovement.cashRegister?.status === "CLOSED") {
+      throw new Error("No se puede anular una membresía perteneciente a una caja cerrada");
+    }
 
-      if (!membership)
-        throw new Error(
-          'Membresía no encontrada'
-        );
+    ////////////////////////////////////
+    // CUSTOMER MEMBERSHIP
+    ////////////////////////////////////
 
-      const newEndDate =
-        endOfDay(
-          addDays(
-            membership.endDate,
-            -sale.plan.durationDays
-          )
-        );
+    const membership = await tx.customerMembership.findUnique({
+      where: {
+        customerId: sale.partnerId
+      }
+    });
 
-      ////////////////////////////////////
-      // ANULAR VENTA
-      ////////////////////////////////////
+    if (!membership) {
+      throw new Error("Membresía no encontrada");
+    }
 
-      await tx.membershipSale.update({
+    const newEndDate = endOfDay(addDays(membership.endDate, -sale.plan.durationDays));
 
+    ////////////////////////////////////
+    // ANULAR MEMBERSHIP SALE
+    ////////////////////////////////////
+
+    await tx.membershipSale.update({
+      where: {
+        id: sale.id
+      },
+
+      data: {
+        status: "ANNULLED"
+      }
+    });
+
+    ////////////////////////////////////
+    // ANULAR SALE COMERCIAL
+    ////////////////////////////////////
+
+    if (sale.saleId) {
+      await tx.sale.update({
         where: {
-          id: sale.id
+          id: sale.saleId
         },
 
         data: {
-          status:
-            'ANNULLED'
+          status: "CANCELLED"
         }
+      });
+    }
 
+    ////////////////////////////////////
+    // ANULAR MOVIMIENTOS DE CAJA
+    ////////////////////////////////////
+
+    await tx.cashMovement.updateMany({
+      where: {
+        companyId,
+        referenceId: sale.saleId,
+        status: "ACTIVE"
+      },
+
+      data: {
+        status: "CANCELLED",
+
+        cancelledAt: new Date(),
+
+        cancelledById: userId
+      }
+    });
+
+    ////////////////////////////////////
+    // SIN MEMBRESÍA VIGENTE
+    ////////////////////////////////////
+
+    if (newEndDate <= today) {
+      await tx.customerMembership.update({
+        where: {
+          customerId: sale.partnerId
+        },
+
+        data: {
+          endDate: today,
+
+          deletedFromDevice: true
+        }
+      });
+
+      const branches = await tx.branch.findMany({
+        where: {
+          companyId
+        },
+
+        select: {
+          id: true
+        }
       });
 
       ////////////////////////////////////
-      // SIN MEMBRESÍA
+      // DELETE USER EN TODAS LAS SUCURSALES
       ////////////////////////////////////
 
-      if (
-        newEndDate <= today
-      ) {
-
-        await tx.customerMembership
-        .update({
-
-          where: {
-            customerId:
-              sale.partnerId
-          },
-
-          data: {
-            endDate:
-              today,
-
-            deletedFromDevice:
-              true
-          }
-
-        });
-
+      for (const branch of branches) {
         await tx.command.create({
-
           data: {
-
-            type:
-              'DELETE_FACE',
+            type: "DELETE_USER",
 
             payload: {
-              userId:
-                sale.partnerId
+              userId: sale.partnerId
             },
 
-            membershipSaleId:
-              sale.id,
+            membershipSaleId: sale.id,
 
             companyId,
-            branchId
+
+            branchId: branch.id
           }
-
         });
-        // =====================
-        // DISPARAR AGENT
-        // =====================
-        sendCommandToAgent(companyId, branchId, {
-          type: 'SYNC'
-        });
-
-        notifyFrontend({
-          type: "MEMBERSHIP_UPDATE"
-        });
-
-        return {
-          success: true,
-          membership
-        };
-      
-
       }
 
       ////////////////////////////////////
-      // AÚN TIENE VIGENCIA
+      // DISPARAR AGENTS
       ////////////////////////////////////
 
-      else {
+      for (const branch of branches) {
+        sendCommandToAgent(companyId, branch.id, {
+          type: "SYNC"
+        });
+      }
 
-          await tx.customerMembership
-          .update({
+      notifyFrontend({
+        type: "MEMBERSHIP_UPDATE"
+      });
 
-            where: {
-              customerId:
-                sale.partnerId
-            },
-
-            data: {
-              endDate:
-                newEndDate
-            }
-
-          });
-        // =====================
-          // CREAR COMMAND DIRECTO (igual que sync)
-          // =====================
-          const baseUrl = process.env.BASE_URL;
-
-                await tx.command.create({
-
-                  data: {
-
-                    type:
-                    'SYNC_USER_FULL',
-
-                    payload: {
-
-                      userId:
-                        sale.partnerId,
-
-                      name:
-                        sale.partner.name,
-
-                      startDate:
-                        membership.startDate
-                        .toISOString(),
-
-                      endDate:
-                        newEndDate
-                        .toISOString(),
-
-                      imagePath:
-                        sale.partner
-                        .imageUrl 
-                        ? `${baseUrl}/${sale.partner.imageUrl}`
-                    : null
-                    },
-
-                    membershipSaleId:
-                      sale.id,
-
-                    companyId,
-                    branchId
-
-                  }
-
-                });
-          }
-        // =====================
-          // DISPARAR AGENT
-          // =====================
-          sendCommandToAgent(companyId, branchId, {
-            type: 'SYNC'
-          });
-
-          notifyFrontend({
-            type: "MEMBERSHIP_UPDATE"
-          });
-
-          return {
-            success: true,
-            membership
-          };
-
-      return true;
-
+      return {
+        success: true,
+        membership
+      };
     }
-  );
 
+    ////////////////////////////////////
+    // AÚN TIENE VIGENCIA
+    ////////////////////////////////////
+
+    await tx.customerMembership.update({
+      where: {
+        customerId: sale.partnerId
+      },
+
+      data: {
+        endDate: newEndDate
+      }
+    });
+
+    const baseUrl = process.env.BASE_URL;
+
+    await tx.command.create({
+      data: {
+        type: "SYNC_USER_FULL",
+
+        payload: {
+          userId: sale.partnerId,
+
+          name: sale.partner.name,
+
+          startDate: membership.startDate.toISOString(),
+
+          endDate: newEndDate.toISOString(),
+
+          imagePath: sale.partner.imageUrl ? `${baseUrl}/${sale.partner.imageUrl}` : null
+        },
+
+        membershipSaleId: sale.id,
+
+        companyId,
+
+        branchId: sale.branchId
+      }
+    });
+
+    ////////////////////////////////////
+    // DISPARAR AGENT
+    ////////////////////////////////////
+
+    sendCommandToAgent(companyId, sale.branchId, {
+      type: "SYNC"
+    });
+
+    notifyFrontend({
+      type: "MEMBERSHIP_UPDATE"
+    });
+
+    return {
+      success: true,
+      membership
+    };
+  });
 };

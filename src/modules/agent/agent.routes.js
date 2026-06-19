@@ -1,18 +1,9 @@
 import express from "express";
 import { agentAuth } from "../../middlewares/agentAuth.middleware.js";
 import { requireAuth } from "../../middlewares/auth.middleware.js";
-import {
-  agentLogin,
-  getAgentConfig,
-  agentHeartbeat,
-  downloadAgent,
-  downloadAgentExe
-} from "./agent.controller.js";
+import { agentLogin, getAgentConfig, agentHeartbeat, downloadAgent, downloadAgentExe } from "./agent.controller.js";
 
-import {
-  getAgentCommands,
-  completeCommand
-} from "../command/command.controller.js";
+import { getAgentCommands, completeCommand } from "../command/command.controller.js";
 
 const router = express.Router();
 

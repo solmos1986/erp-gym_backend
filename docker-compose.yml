@@ -4,28 +4,28 @@ services:
     image: erp_backend
     build: .
     ports:
-      - "3000:3000"  # Exponer el puerto 3000 para el backend
+      - "3000:3000" # Exponer el puerto 3000 para el backend
     env_file:
       - .env
     volumes:
-    - /www/uploads:/app/uploads
+      - /www/uploads:/app/uploads
     depends_on:
-      - postgres  # Asegúrate de que el backend dependa de PostgreSQL
+      - postgres # Asegúrate de que el backend dependa de PostgreSQL
     networks:
-      - default  # Usamos la red predeterminada de Docker
+      - default # Usamos la red predeterminada de Docker
 
   postgres:
     container_name: erp_postgres
     image: postgres:15
     ports:
-      - "5432:5432"  # Exponer el puerto 5432 para PostgreSQL
+      - "5432:5432" # Exponer el puerto 5432 para PostgreSQL
     environment:
       POSTGRES_USER: "erp_user"
       POSTGRES_PASSWORD: "Erp123456!"
       POSTGRES_DB: "erp_saas"
     networks:
-      - default  # Usamos la red predeterminada de Docker
+      - default # Usamos la red predeterminada de Docker
 
 networks:
-  default:  # Red predeterminada de Docker, no necesitamos una red personalizada
+  default: # Red predeterminada de Docker, no necesitamos una red personalizada
     driver: bridge

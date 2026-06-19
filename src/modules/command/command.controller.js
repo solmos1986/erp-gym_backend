@@ -1,6 +1,6 @@
 import prisma from "../../lib/prisma.js";
 import { getAndLockCommands } from "./command.service.js";
-import { notifyFrontend } from '../../lib/websocket.server.js';
+import { notifyFrontend } from "../../lib/websocket.server.js";
 
 // 🔵 GET /agent/commands
 export async function getAgentCommands(req, res) {
@@ -16,13 +16,10 @@ export async function getAgentCommands(req, res) {
     const commands = await getAndLockCommands(companyId, branchId);
 
     return res.json(commands);
-
   } catch (error) {
-    
     return res.status(500).json({ message: "Error obteniendo comandos" });
   }
 }
-
 
 // 🔴 POST /agent/commands/:id/complete
 export async function completeCommand(req, res) {
@@ -83,13 +80,10 @@ export async function completeCommand(req, res) {
       type: "MEMBERSHIP_UPDATE"
     });
     return res.json({ ok: true });
-
   } catch (err) {
-    
     return res.status(500).json({ message: "Error actualizando comando" });
   }
 }
-
 
 // 🔵 POST /commands (uso interno o admin)
 export const createCommand = async (req, res) => {
@@ -111,9 +105,7 @@ export const createCommand = async (req, res) => {
     });
 
     return res.json(command);
-
   } catch (error) {
-    
     return res.status(500).json({ message: "Error creando command" });
   }
 };

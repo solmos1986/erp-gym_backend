@@ -43,7 +43,7 @@ export const createRole = async (req, res) => {
     // ASIGNAR PERMISOS
     if (permissionIds && permissionIds.length > 0) {
       await prisma.rolePermission.createMany({
-        data: permissionIds.map(permissionId => ({
+        data: permissionIds.map((permissionId) => ({
           roleId: role.id,
           permissionId
         }))
@@ -54,10 +54,7 @@ export const createRole = async (req, res) => {
       message: "Rol creado correctamente",
       role
     });
-
   } catch (error) {
-    
-
     res.status(400).json({
       message: error.message || "Error creando rol"
     });
@@ -93,10 +90,7 @@ export const getRoles = async (req, res) => {
     });
 
     res.json(roles);
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error obteniendo roles"
     });
@@ -128,7 +122,6 @@ export const updateRole = async (req, res) => {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-
       // ACTUALIZAR NOMBRE
       const role = await tx.role.update({
         where: { id },
@@ -139,7 +132,6 @@ export const updateRole = async (req, res) => {
 
       // ACTUALIZAR PERMISOS
       if (permissionIds !== undefined) {
-
         // ELIMINAR ANTERIORES
         await tx.rolePermission.deleteMany({
           where: { roleId: id }
@@ -148,7 +140,7 @@ export const updateRole = async (req, res) => {
         // CREAR NUEVOS
         if (permissionIds.length > 0) {
           await tx.rolePermission.createMany({
-            data: permissionIds.map(permissionId => ({
+            data: permissionIds.map((permissionId) => ({
               roleId: id,
               permissionId
             }))
@@ -163,10 +155,7 @@ export const updateRole = async (req, res) => {
       message: "Rol actualizado correctamente",
       role: result
     });
-
   } catch (error) {
-    
-
     res.status(400).json({
       message: error.message || "Error actualizando rol"
     });
@@ -196,7 +185,6 @@ export const deleteRole = async (req, res) => {
     }
 
     await prisma.$transaction(async (tx) => {
-
       // eliminar relaciones
       await tx.userRole.deleteMany({
         where: { roleId: id }
@@ -215,10 +203,7 @@ export const deleteRole = async (req, res) => {
     res.json({
       message: "Rol eliminado correctamente"
     });
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: error.message || "Error eliminando rol"
     });
@@ -246,10 +231,7 @@ export const assignRoleToUser = async (req, res) => {
       message: "Rol asignado correctamente",
       userRole
     });
-
   } catch (error) {
-    
-
     res.status(400).json({
       message: "Error asignando rol al usuario"
     });
@@ -276,10 +258,7 @@ export const removeRoleFromUser = async (req, res) => {
       message: "Rol eliminado correctamente del usuario",
       userRole
     });
-
   } catch (error) {
-    
-
     res.status(400).json({
       message: "Error eliminando rol del usuario"
     });

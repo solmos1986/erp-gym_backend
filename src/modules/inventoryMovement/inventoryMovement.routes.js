@@ -17,50 +17,23 @@ const router = express.Router();
 // =========================
 // ➕ CREAR MOVIMIENTO
 // =========================
-router.post(
-  "/",
-  requireAuth,
-  requirePermission("TENANT_INVENTORY_CREATE"),
-  createInventoryMovement
-);
+router.post("/", requireAuth, requirePermission("TENANT_INVENTORY_CREATE"), createInventoryMovement);
 
 // =========================
 // 📋 LISTAR MOVIMIENTOS
 // =========================
-router.get(
-  "/",
-  requireAuth,
-  requirePermission("TENANT_INVENTORY_VIEW"),
-  getInventoryMovements
-);
+router.get("/", requireAuth, requirePermission("TENANT_INVENTORY_VIEW"), getInventoryMovements);
 // =========================
 // OBTENER STOCK ACTUAL
 // =========================
-router.get(
-  "/stock",
-  requireAuth,
-  requirePermission("TENANT_INVENTORY_VIEW"),
-  getStockByBranch
-);
+router.get("/stock", requireAuth, requirePermission("TENANT_INVENTORY_VIEW"), getStockByBranch);
 //=========================
 // OBTENER MOVIMIENTOS POR PRODUCTO (KARDEX)
 //=========================
-router.get(
-  "/kardex",
-  requireAuth,
-  requirePermission("TENANT_INVENTORY_VIEW"),
-  getKardex
-);
+router.get("/kardex", requireAuth, requirePermission("TENANT_INVENTORY_VIEW"), getKardex);
 // =========================
 // 🔍 OBTENER MOVIMIENTO
 // =========================
-router.get(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_INVENTORY_VIEW"),
-  tenantGuard,
-  getInventoryMovementById
-);
-
+router.get("/:id", requireAuth, requirePermission("TENANT_INVENTORY_VIEW"), tenantGuard, getInventoryMovementById);
 
 export default router;

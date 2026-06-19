@@ -43,7 +43,6 @@ export const createProductCategory = async (req, res) => {
       message: "Categoría creada correctamente",
       category
     });
-
   } catch (error) {
     res.status(500).json({
       message: error.message || "Error creando categoría",
@@ -72,7 +71,6 @@ export const getProductCategories = async (req, res) => {
     });
 
     res.json(categories);
-
   } catch (error) {
     res.status(500).json({
       message: "Error obteniendo categorías",
@@ -102,7 +100,6 @@ export const getProductCategoryById = async (req, res) => {
     }
 
     res.json(category);
-
   } catch (error) {
     res.status(500).json({
       message: "Error obteniendo categoría",
@@ -160,7 +157,6 @@ export const updateProductCategory = async (req, res) => {
       message: "Categoría actualizada correctamente",
       category
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Error actualizando categoría",
@@ -211,7 +207,6 @@ export const deleteProductCategory = async (req, res) => {
     res.json({
       message: "Categoría desactivada correctamente"
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Error desactivando categoría",
@@ -250,7 +245,6 @@ export const activateProductCategory = async (req, res) => {
     res.json({
       message: "Categoría activada correctamente"
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Error activando categoría",

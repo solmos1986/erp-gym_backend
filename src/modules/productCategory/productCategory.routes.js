@@ -18,65 +18,31 @@ const router = express.Router();
 // =========================
 // ➕ CREAR CATEGORÍA
 // =========================
-router.post(
-  "/",
-  requireAuth,
-  requirePermission("TENANT_PRODUCT_CATEGORIES_CREATE"),
-  createProductCategory
-);
+router.post("/", requireAuth, requirePermission("TENANT_PRODUCT_CATEGORIES_CREATE"), createProductCategory);
 
 // =========================
 // 📋 LISTAR CATEGORÍAS
 // =========================
-router.get(
-  "/",
-  requireAuth,
-  requirePermission("TENANT_PRODUCT_CATEGORIES_VIEW"),
-  getProductCategories
-);
+router.get("/", requireAuth, requirePermission("TENANT_PRODUCT_CATEGORIES_VIEW"), getProductCategories);
 
 // =========================
 // 🔍 OBTENER CATEGORÍA
 // =========================
-router.get(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PRODUCT_CATEGORIES_VIEW"),
-  tenantGuard,
-  getProductCategoryById
-);
+router.get("/:id", requireAuth, requirePermission("TENANT_PRODUCT_CATEGORIES_VIEW"), tenantGuard, getProductCategoryById);
 
 // =========================
 // ✏️ ACTUALIZAR CATEGORÍA
 // =========================
-router.put(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PRODUCT_CATEGORIES_EDIT"),
-  tenantGuard,
-  updateProductCategory
-);
+router.put("/:id", requireAuth, requirePermission("TENANT_PRODUCT_CATEGORIES_EDIT"), tenantGuard, updateProductCategory);
 
 // =========================
 // ❌ DESACTIVAR CATEGORÍA
 // =========================
-router.delete(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PRODUCT_CATEGORIES_DELETE"),
-  tenantGuard,
-  deleteProductCategory
-);
+router.delete("/:id", requireAuth, requirePermission("TENANT_PRODUCT_CATEGORIES_DELETE"), tenantGuard, deleteProductCategory);
 
 // =========================
 // ✅ ACTIVAR CATEGORÍA
 // =========================
-router.put(
-  "/:id/activate",
-  requireAuth,
-  requirePermission("TENANT_PRODUCT_CATEGORIES_EDIT"),
-  tenantGuard,
-  activateProductCategory
-);
+router.put("/:id/activate", requireAuth, requirePermission("TENANT_PRODUCT_CATEGORIES_EDIT"), tenantGuard, activateProductCategory);
 
 export default router;

@@ -1,5 +1,5 @@
 import express from "express";
-import { getBranches, createBranch  } from "./branch.controller.js";
+import { getBranches, createBranch } from "./branch.controller.js";
 import { requireAuth } from "../../middlewares/auth.middleware.js";
 import requirePermission from "../../middlewares/permission.middleware.js";
 
@@ -21,9 +21,5 @@ router.get(
 // =========================
 // 📋 CREAR
 // =========================
-router.post(
-  "/",
-  requirePermission("SYSTEM_BRANCH_CREATE"),
-  createBranch
-);
+router.post("/", requirePermission("SYSTEM_BRANCH_CREATE"), createBranch);
 export default router;

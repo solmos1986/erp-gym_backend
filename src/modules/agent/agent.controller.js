@@ -16,7 +16,6 @@ const decrypt = (cipherText) => {
 // AGENT LOGIN
 //========================
 
-
 export const agentLogin = async (req, res) => {
   return res.json({
     ok: true,
@@ -40,17 +39,15 @@ export const getAgentConfig = async (req, res) => {
       }
     });
 
-    const devicesWithPassword = devices.map(d => ({
-  ...d,
-  password: decrypt(d.password)
-}));
+    const devicesWithPassword = devices.map((d) => ({
+      ...d,
+      password: decrypt(d.password)
+    }));
 
-return res.json({
-  devices: devicesWithPassword
-});
-
+    return res.json({
+      devices: devicesWithPassword
+    });
   } catch (error) {
-    
     res.status(500).json({ message: "Error obteniendo config" });
   }
 };
@@ -60,8 +57,8 @@ return res.json({
 //=============================
 export const agentHeartbeat = async (req, res) => {
   try {
-    const agent = req.agent // 🔥 viene del middleware
-    const { devices } = req.body
+    const agent = req.agent; // 🔥 viene del middleware
+    const { devices } = req.body;
     const publicIp = req.ip;
     // 💓 actualizar agent
     await prisma.agent.update({
@@ -70,7 +67,7 @@ export const agentHeartbeat = async (req, res) => {
         lastSeenAt: new Date(),
         publicIp: publicIp
       }
-    })
+    });
 
     // 🔌 actualizar dispositivos
     if (devices && devices.length > 0) {
@@ -82,17 +79,16 @@ export const agentHeartbeat = async (req, res) => {
             status: d.status,
             lastConnectionAt: new Date()
           }
-        })
+        });
       }
     }
 
-    return res.json({ ok: true })
-
+    return res.json({ ok: true });
   } catch (error) {
-    console.error("Heartbeat error:", error)
-    return res.status(500).json({ error: "Error en heartbeat" })
+    console.error("Heartbeat error:", error);
+    return res.status(500).json({ error: "Error en heartbeat" });
   }
-}
+};
 //========================
 // AGENT DOWNLOAD
 //=============================
@@ -113,7 +109,7 @@ export async function downloadAgent(req, res) {
     }
 
     // 🔐 2. Validar acceso
-    const isSystemAdmin = req.user.systemRoles?.includes('SYSTEM_ADMIN');
+    const isSystemAdmin = req.user.systemRoles?.includes("SYSTEM_ADMIN");
 
     if (!isSystemAdmin) {
       if (req.user.companyId !== branch.companyId) {
@@ -147,13 +143,9 @@ export async function downloadAgent(req, res) {
 
     // 📄 Enviar como archivo descargable
     res.setHeader("Content-Type", "application/json");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=config.local.json"
-    );
+    res.setHeader("Content-Disposition", "attachment; filename=config.local.json");
 
     res.send(JSON.stringify(config, null, 2));
-
   } catch (error) {
     console.error("❌ Error generando config:", error);
 
@@ -174,7 +166,6 @@ export async function downloadAgentExe(req, res) {
     }
 
     res.download(agentPath, "agent.rar");
-
   } catch (error) {
     res.status(500).json({
       message: "Error descargando agent"

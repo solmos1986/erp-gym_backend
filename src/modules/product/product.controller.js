@@ -7,14 +7,7 @@ const prisma = new PrismaClient();
 // ➕ CREAR PRODUCTO
 // =========================
 export const createProduct = async (req, res) => {
-  const {
-    code,
-    name,
-    description,
-    costPrice,
-    salePrice,
-    productCategoryId
-  } = req.body;
+  const { code, name, description, costPrice, salePrice, minStock, productCategoryId } = req.body;
 
   try {
     if (!name) {
@@ -46,38 +39,37 @@ export const createProduct = async (req, res) => {
     }
 
     const product = await prisma.product.create({
-        data: {
-            code,
-            name,
-            description,
-            costPrice,
-            salePrice,
-
-            company: {
-            connect: {
-                id: req.user.companyId
-            }
-            },
-
-            ...(productCategoryId && {
-            category: {
-                connect: {
-                id: productCategoryId
-                }
-            }
-            })
+      data: {
+        code,
+        name,
+        description,
+        costPrice,
+        salePrice,
+        minStock,
+        company: {
+          connect: {
+            id: req.user.companyId
+          }
         },
 
-        include: {
-            category: true
-        }
+        ...(productCategoryId && {
+          category: {
+            connect: {
+              id: productCategoryId
+            }
+          }
+        })
+      },
+
+      include: {
+        category: true
+      }
     });
 
     res.status(201).json({
       message: "Producto creado correctamente",
       product
     });
-
   } catch (error) {
     console.error(error);
 
@@ -119,7 +111,6 @@ export const getProducts = async (req, res) => {
     });
 
     res.json(products);
-
   } catch (error) {
     console.error(error);
 
@@ -144,10 +135,10 @@ export const getProductById = async (req, res) => {
 
       include: {
         category: {
-            select: {
+          select: {
             id: true,
             name: true
-            }
+          }
         }
       }
     });
@@ -159,7 +150,6 @@ export const getProductById = async (req, res) => {
     }
 
     res.json(product);
-
   } catch (error) {
     console.error(error);
 
@@ -175,15 +165,7 @@ export const getProductById = async (req, res) => {
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
 
-  const {
-    code,
-    name,
-    description,
-    costPrice,
-    salePrice,
-    productCategoryId,
-    isActive
-  } = req.body;
+  const { code, name, description, costPrice, salePrice, minStock, productCategoryId, isActive } = req.body;
 
   try {
     const existingProduct = await prisma.product.findFirst({
@@ -226,6 +208,7 @@ export const updateProduct = async (req, res) => {
         description,
         costPrice,
         salePrice,
+        minStock,
         isActive,
 
         ...(productCategoryId && {
@@ -246,7 +229,6 @@ export const updateProduct = async (req, res) => {
       message: "Producto actualizado correctamente",
       product
     });
-
   } catch (error) {
     console.error(error);
 
@@ -290,7 +272,6 @@ export const deleteProduct = async (req, res) => {
     res.json({
       message: "Producto desactivado correctamente"
     });
-
   } catch (error) {
     console.error(error);
 
@@ -333,7 +314,6 @@ export const activateProduct = async (req, res) => {
     res.json({
       message: "Producto activado correctamente"
     });
-
   } catch (error) {
     console.error(error);
 

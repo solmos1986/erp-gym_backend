@@ -1,53 +1,40 @@
 import { PrismaClient } from "@prisma/client";
 import { applyTenantFilter } from "../../utils/tenant.util.js";
-import { sendCommandToAgent, notifyFrontend } from '../../lib/websocket.server.js';
+import { sendCommandToAgent, notifyFrontend } from "../../lib/websocket.server.js";
 import XLSX from "xlsx";
 
-
 const prisma = new PrismaClient();
-const parseExcelDate = (value)=>{
-// Excel serial
-if(
-typeof value === "number"
-){
+const parseExcelDate = (value) => {
+  // Excel serial
+  if (typeof value === "number") {
+    const utcDays = Math.floor(value - 25569);
 
-const utcDays =
-Math.floor(
-value - 25569
-);
+    const date = new Date(utcDays * 86400 * 1000);
 
-const date =
-new Date(
-utcDays *
-86400 *
-1000
-);
+    return new Date(
+      date.getUTCFullYear(),
 
-return new Date(
-
-date.getUTCFullYear(),
-
-date.getUTCMonth(),
-date.getUTCDate()
-);
-}
-// Texto YYYY-MM-DD
-if(typeof value === "string"){
-const [year,month,day] = value.split("-").map(Number);
-return new Date(year,month - 1,day);
-}
-return null;
+      date.getUTCMonth(),
+      date.getUTCDate()
+    );
+  }
+  // Texto YYYY-MM-DD
+  if (typeof value === "string") {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+  return null;
 };
 
 const startOfDay = (date) => {
   const d = new Date(date);
-  d.setHours(0,0,0,0);
+  d.setHours(0, 0, 0, 0);
   return d;
 };
 
 const endOfDay = (date) => {
   const d = new Date(date);
-  d.setHours(23,59,59,999);
+  d.setHours(23, 59, 59, 999);
   return d;
 };
 // =========================
@@ -71,8 +58,6 @@ const endOfDay = (date) => {
 //       if (!validTypes.includes(safeType)) {
 //         throw new Error("Tipo inválido");
 //       }
-
-
 
 //       // 🧼 SANITIZAR CAMPOS
 //       const cleanDocument = document ? String(document) : null;
@@ -130,7 +115,6 @@ const endOfDay = (date) => {
 //     });
 
 //   } catch (error) {
-    
 
 //     res.status(400).json({
 //       message: error.message || "Error creando cliente"
@@ -142,7 +126,6 @@ export const createPartner = async (req, res) => {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-
       // 🔒 VALIDAR companyId
       if (!req.user.companyId) {
         throw new Error("CompanyId no definido");
@@ -213,9 +196,7 @@ export const createPartner = async (req, res) => {
       message: "Cliente creado correctamente",
       partner: result
     });
-
   } catch (error) {
-
     res.status(400).json({
       message: error.message || "Error creando cliente"
     });
@@ -227,27 +208,30 @@ export const createPartner = async (req, res) => {
 // =========================
 export const getPartners = async (req, res) => {
   try {
+    const { type } = req.query;
     const partners = await prisma.partner.findMany({
-      where: applyTenantFilter(req),
+      where: {
+        ...applyTenantFilter(req),
+        ...(type && { type })
+      },
       orderBy: { createdAt: "desc" },
       include: {
-        membership: true // 🔗 incluir membresías 
-         }
-     });
+        membership: true // 🔗 incluir membresías
+      }
+    });
 
-    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
 
-    const partnersWithUrl = partners.map(p => ({
+    const partnersWithUrl = partners.map((p) => ({
       ...p,
       imageUrl: p.imageUrl ? `${baseUrl}/${p.imageUrl}` : null
     }));
 
     res.json(partnersWithUrl);
-
   } catch (error) {
-  console.error(error); // 🔥 AGREGA ESTO
-  res.status(500).json({ message: 'Error obteniendo clientes' });
-}
+    console.error(error); // 🔥 AGREGA ESTO
+    res.status(500).json({ message: "Error obteniendo clientes" });
+  }
 };
 
 // =========================
@@ -257,10 +241,12 @@ export const getPartnerById = async (req, res) => {
   const { id } = req.params;
 
   try {
+    const { type } = req.query;
     const partner = await prisma.partner.findFirst({
       where: {
         id,
-        ...applyTenantFilter(req)
+        ...applyTenantFilter(req),
+        ...(type && { type })
       },
       include: {
         memberships: true
@@ -274,10 +260,7 @@ export const getPartnerById = async (req, res) => {
     }
 
     res.json(partner);
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error obteniendo cliente"
     });
@@ -339,17 +322,12 @@ export const updatePartner = async (req, res) => {
         ...(typeof isActive === "boolean" && { isActive })
       }
     });
-    
-    
 
     res.json({
       message: "Cliente actualizado correctamente",
       partner
     });
-
   } catch (error) {
-    
-
     res.status(400).json({
       message: error.message || "Error actualizando cliente"
     });
@@ -361,7 +339,7 @@ export const updatePartner = async (req, res) => {
 // =========================
 export const deletePartner = async (req, res) => {
   const { id } = req.params;
-  
+  const companyId = req.user.companyId;
   try {
     const partner = await prisma.partner.findFirst({
       where: {
@@ -381,10 +359,20 @@ export const deletePartner = async (req, res) => {
       data: { isActive: false }
     });
 
-      // =====================
-      // CREAR COMMAND DIRECTO (igual que sync)
-      // =====================
-      const baseUrl = process.env.BASE_URL;
+    // =====================
+    // CREAR COMMAND DIRECTO (igual que sync)
+    // =====================
+    const baseUrl = process.env.BASE_URL;
+    const branches = await prisma.branch.findMany({
+      where: {
+        companyId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    for (const branch of branches) {
       await prisma.$transaction(async (tx) => {
         await tx.command.create({
           data: {
@@ -398,28 +386,21 @@ export const deletePartner = async (req, res) => {
           }
         });
       });
-    
-       sendCommandToAgent(
-      partner.companyId,
-      req.user.branchId,
-      {
-        type: "SYNC"
-      }
-    );
+    }
+
+    sendCommandToAgent(partner.companyId, req.user.branchId, {
+      type: "SYNC"
+    });
 
     notifyFrontend({
       type: "MEMBERSHIP_UPDATE"
     });
 
-
     res.json({ message: "Cliente desactivado" });
-
-
   } catch (error) {
-    
-
     res.status(500).json({
-      message: "Error eliminando cliente", error: error.message
+      message: "Error eliminando cliente",
+      error: error.message
     });
   }
 };
@@ -428,21 +409,17 @@ export const deletePartner = async (req, res) => {
 // 🖼️ AGREGAR IMAGEN
 // =========================
 export const addPartnerImage = async (req, res) => {
-  
-
   const { id } = req.params;
 
   try {
-    
-
     if (!req.file) {
       throw new Error("Archivo no enviado");
     }
 
-    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
 
-const filePath = `uploads/partners/${req.file.filename}`; // 👈 lo que guardas en DB
-const fileUrl = `${baseUrl}/${filePath}`; // 👈 solo si lo necesitas devolver
+    const filePath = `uploads/partners/${req.file.filename}`; // 👈 lo que guardas en DB
+    const fileUrl = `${baseUrl}/${filePath}`; // 👈 solo si lo necesitas devolver
     const partner = await prisma.partner.findFirst({
       where: {
         id,
@@ -467,16 +444,11 @@ const fileUrl = `${baseUrl}/${filePath}`; // 👈 solo si lo necesitas devolver
       }
     });
 
-    
-
     res.json({
       message: "Imagen subida correctamente",
       url: fileUrl
     });
-
   } catch (error) {
-    
-
     res.status(400).json({
       message: error.message || "Error subiendo imagen"
     });
@@ -508,10 +480,7 @@ export const activatePartner = async (req, res) => {
     });
 
     res.json({ message: "Cliente activado correctamente" });
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error activando cliente"
     });
@@ -520,93 +489,86 @@ export const activatePartner = async (req, res) => {
 // =========================
 // IMPORTAR CLIENTES EXCEL
 // =========================
-export const importPartnersFromExcel = async(req, res)=>{
+export const importPartnersFromExcel = async (req, res) => {
+  try {
+    const workbook = XLSX.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
 
-try{
+    let imported = 0;
+    let skipped = 0;
+    let memberships = 0;
 
-  const workbook =XLSX.readFile(req.file.path);
-  const sheet =workbook.Sheets[workbook.SheetNames[0]];
-  const rows =XLSX.utils.sheet_to_json(sheet);
+    for (const row of rows) {
+      if (!row.Nombre) {
+        skipped++;
+        continue;
+      }
 
-  let imported = 0;
-  let skipped = 0;
-  let memberships = 0;
+      const document = row.Documento ? String(row.Documento) : null;
 
-  for(const row of rows){
-
-  if(!row.Nombre){
-    skipped++;
-    continue;
-    }
-
-  const document = row.Documento ? String(row.Documento) : null;
-
-  let partner = await prisma.partner.findFirst({
-    where:{
-    companyId:req.user.companyId,
-    document
-    }
-  });
-
-  if(!partner){
-  partner = await prisma.partner.create({
-    data:{
-    companyId:req.user.companyId,
-    type: "CUSTOMER",
-    name: row.Nombre,
-    document,
-    phone: row.Telefono ? String(row.Telefono):null,
-    email: row.Email ??null,
-    address:row.Direccion ??null
-    }
-  });
-  imported++;
-  }
-  else{
-    skipped++;
-  }
-
-  if(row.FechaInicio && row.FechaFin){
-    await prisma.customerMembership.upsert({
-      where:{
-        customerId:
-        partner.id
-        },
-        update:{
-          startDate:startOfDay(parseExcelDate(row.FechaInicio)),
-          endDate:endOfDay(parseExcelDate(row.FechaFin)),
-          status:"ACTIVE",
-          branchId:req.user.branchId
-        },
-        create:{
-        customerId:partner.id,
-        companyId:req.user.companyId,
-        branchId:req.user.branchId,
-        startDate:startOfDay(parseExcelDate(row.FechaInicio)),
-        endDate:endOfDay(parseExcelDate(row.FechaFin)),
-        status:"ACTIVE"
+      let partner = await prisma.partner.findFirst({
+        where: {
+          companyId: req.user.companyId,
+          document
         }
-    });
-    memberships++;
-    }}
+      });
+
+      if (!partner) {
+        partner = await prisma.partner.create({
+          data: {
+            companyId: req.user.companyId,
+            type: "CUSTOMER",
+            name: row.Nombre,
+            document,
+            phone: row.Telefono ? String(row.Telefono) : null,
+            email: row.Email ?? null,
+            address: row.Direccion ?? null
+          }
+        });
+        imported++;
+      } else {
+        skipped++;
+      }
+
+      if (row.FechaInicio && row.FechaFin) {
+        await prisma.customerMembership.upsert({
+          where: {
+            customerId: partner.id
+          },
+          update: {
+            startDate: startOfDay(parseExcelDate(row.FechaInicio)),
+            endDate: endOfDay(parseExcelDate(row.FechaFin)),
+            status: "ACTIVE",
+            branchId: req.user.branchId
+          },
+          create: {
+            customerId: partner.id,
+            companyId: req.user.companyId,
+            branchId: req.user.branchId,
+            startDate: startOfDay(parseExcelDate(row.FechaInicio)),
+            endDate: endOfDay(parseExcelDate(row.FechaFin)),
+            status: "ACTIVE"
+          }
+        });
+        memberships++;
+      }
+    }
     notifyFrontend({
-    type:
-    "MIGRATION_IMPORT"
+      type: "MIGRATION_IMPORT"
     });
     return res.json({
-    ok:true,
-    total:rows.length,
-    imported,
-    skipped,
-    memberships
+      ok: true,
+      total: rows.length,
+      imported,
+      skipped,
+      memberships
     });
-
-}
-catch(error){
-  console.error(error);
-  return res.status(500).json({
-  ok:false,
-  message:
-  error.message
-  });
-}};
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      message: error.message
+    });
+  }
+};

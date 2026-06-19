@@ -31,6 +31,13 @@ model Company {
   products            Product[]
   productCategories   ProductCategory[]
   inventoryMovements  InventoryMovement[]
+  cashRegisters       CashRegister[]
+  cashMovements       CashMovement[]
+  payments            Payment[]
+  Sale                Sale[]
+  purchases           Purchase[]
+  businessTemplateId  String?
+  businessTemplate    BusinessTemplate? @relation(fields:   [businessTemplateId], references: [id])
 }
 
 model User {
@@ -49,7 +56,12 @@ model User {
   company                   Company             @relation(fields: [companyId], references: [id])
   roles                     UserRole[]
   inventoryMovementsCreated InventoryMovement[] @relation("InventoryMovementCreatedBy")
-
+  openedCashRegisters       CashRegister[]      @relation("CashRegisterOpenedBy")
+  closedCashRegisters       CashRegister[]      @relation("CashRegisterClosedBy")
+  cashMovements             CashMovement[]
+  cancelledCashMovements    CashMovement[]      @relation("CashMovementCancelledBy")
+  sales Sale[]
+  purchases Purchase[]
   @@index([companyId])
   @@index([branchId])
 }
@@ -76,6 +88,7 @@ model Permission {
   isActive           Boolean             @default(true)
   companyPermissions CompanyPermission[]
   roles              RolePermission[]
+  businessTemplates  BusinessTemplatePermission[]
 }
 
 model RolePermission {
@@ -128,6 +141,11 @@ model Branch {
   users              User[]
   products           Product[]
   inventoryMovements InventoryMovement[]
+  cashRegisters      CashRegister[]
+  cashMovements      CashMovement[]
+  payments           Payment[]
+  Sale               Sale[]
+  purchases          Purchase[]
 
   @@unique([name, companyId])
 }
@@ -149,6 +167,8 @@ model Partner {
   membership      CustomerMembership?
   membershipSales MembershipSale[]
   company         Company             @relation(fields: [companyId], references: [id])
+  sales           Sale[]
+  purchases       Purchase[]
 
   @@index([companyId])
 }
@@ -217,9 +237,13 @@ model MembershipSale {
   partner   Partner          @relation(fields: [partnerId], references: [id])
   plan      Plan             @relation(fields: [planId], references: [id])
   user      User?            @relation(fields: [userId], references: [id])
+  saleId    String?
+
+  sale Sale? @relation(fields: [saleId], references: [id])
 
   @@index([partnerId])
   @@index([endDate])
+  @@index([saleId])
 }
 
 model CustomerMembership {
@@ -305,6 +329,8 @@ model Product {
 
   isActive Boolean @default(true)
 
+  minStock Int? @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -314,6 +340,7 @@ model Product {
   category ProductCategory? @relation(fields: [productCategoryId], references: [id])
 
   inventoryMovements InventoryMovement[]
+  purchaseDetails    PurchaseDetail[]
 
   @@index([companyId])
   @@index([branchId])
@@ -369,6 +396,335 @@ model InventoryMovement {
   @@index([createdAt])
 }
 
+model CashRegister {
+  id String @id @default(uuid())
+
+  companyId String
+  branchId  String
+
+  openedById String
+  closedById String?
+
+  openedAt DateTime
+
+  closedAt DateTime?
+
+  openingAmount Decimal @db.Decimal(12, 2)
+
+  expectedAmount Decimal? @db.Decimal(12, 2)
+
+  countedAmount Decimal? @db.Decimal(12, 2)
+
+  difference Decimal? @db.Decimal(12, 2)
+
+  notes String?
+
+  status CashRegisterStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+
+  openedBy User @relation("CashRegisterOpenedBy", fields: [openedById], references: [id])
+
+  closedBy User? @relation("CashRegisterClosedBy", fields: [closedById], references: [id])
+
+  movements CashMovement[]
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([openedById])
+  @@index([closedById])
+  @@index([status])
+  @@index([companyId, branchId, status])
+}
+
+model CashMovement {
+  id String @id @default(uuid())
+
+  companyId String
+  branchId  String
+
+  cashRegisterId String
+
+  type CashMovementType
+
+  amount      Decimal            @db.Decimal(12, 2)
+  status      CashMovementStatus @default(ACTIVE)
+  description String?
+
+  referenceType CashReferenceType
+  referenceId   String?
+
+  createdById String
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+
+  cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
+
+  createdBy     User      @relation(fields: [createdById], references: [id])
+  cancelledAt   DateTime?
+  cancelledById String?
+
+  cancelledBy User?     @relation("CashMovementCancelledBy", fields: [cancelledById], references: [id])
+  payments    Payment[]
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([cashRegisterId])
+  @@index([createdById])
+  @@index([referenceType])
+  @@index([createdAt])
+}
+
+model Payment {
+  id String @id @default(uuid())
+
+  companyId String
+  branchId  String
+
+  cashMovementId String
+
+  method PaymentMethod
+
+  amount Decimal @db.Decimal(12, 2)
+
+  reference String?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  cashMovement CashMovement @relation(fields: [cashMovementId], references: [id])
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([cashMovementId])
+  @@index([method])
+  @@index([createdAt])
+}
+
+model Sale {
+  id String @id @default(uuid())
+
+  companyId String
+  branchId  String?
+  userId    String?
+  saleNumber Int?
+  customerId String?
+
+  saleDate DateTime @default(now())
+
+  subtotal Decimal @db.Decimal(18, 2)
+  discount Decimal @default(0) @db.Decimal(18, 2)
+  tax      Decimal @default(0) @db.Decimal(18, 2)
+  total    Decimal @db.Decimal(18, 2)
+
+  status SaleStatus @default(CONFIRMED)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cancelledById String?
+  cancelledAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+  customer Partner? @relation(fields: [customerId], references: [id])
+
+  details SaleDetail[]
+
+  MembershipSale MembershipSale[]
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([saleDate])
+  @@index([status])
+  @@index([userId])
+}
+
+model SaleDetail {
+  id String @id @default(uuid())
+
+  saleId String
+
+  itemType SaleItemType
+
+  itemId String?
+
+  code        String?
+  description String
+
+  quantity Decimal @default(1) @db.Decimal(18, 2)
+
+  unitPrice Decimal @db.Decimal(18, 2)
+
+  unitCost   Decimal @db.Decimal(10,2)
+
+  discount Decimal @default(0) @db.Decimal(18, 2)
+
+  total Decimal @db.Decimal(18, 2)
+
+  createdAt DateTime @default(now())
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([itemType])
+}
+
+model Purchase {
+  id String @id @default(uuid())
+
+  companyId String
+  branchId String
+  userId String?
+  purchaseNumber Int?
+  supplierId String
+
+  
+
+  purchaseDate DateTime @default(now())
+
+  subtotal Decimal @db.Decimal(18,2)
+  discount Decimal @default(0) @db.Decimal(18,2)
+  tax Decimal @default(0) @db.Decimal(18,2)
+  total Decimal @db.Decimal(18,2)
+
+  status PurchaseStatus @default(CONFIRMED)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cancelledById String?
+  cancelledAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+  supplier Partner @relation(fields: [supplierId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+  details PurchaseDetail[]
+
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([supplierId])
+  @@index([purchaseDate])
+  @@index([status])
+  @@index([userId])
+}
+
+model PurchaseDetail {
+  id String @id @default(uuid())
+
+  purchaseId String
+  productId String
+
+  code String?
+  description String
+
+  quantity Decimal @db.Decimal(18,2)
+
+  unitCost Decimal @db.Decimal(18,2)
+
+  total Decimal @db.Decimal(18,2)
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+model BusinessTemplate {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions BusinessTemplatePermission[]
+  companies   Company[]
+}
+
+model BusinessTemplatePermission {
+  id                 String @id @default(uuid())
+
+  businessTemplateId String
+  permissionId       String
+
+  businessTemplate BusinessTemplate @relation(fields: [businessTemplateId], references: [id])
+
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([businessTemplateId, permissionId])
+}
+
+enum PurchaseStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+enum SaleItemType {
+  MEMBERSHIP_PLAN
+  PRODUCT
+  SERVICE
+}
+
+enum SaleStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementType {
+  INCOME
+  EXPENSE
+}
+
+enum CashMovementStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  QR
+  CARD
+  TRANSFER
+  DEPOSIT
+}
+
+enum CashReferenceType {
+  MANUAL
+  MEMBERSHIP_SALE
+  PRODUCT_SALE
+  PURCHASE
+  CASH_OPENING
+  CASH_CLOSING
+  ADJUSTMENT
+}
+
 enum RoleScope {
   SYSTEM
   TENANT
@@ -412,10 +768,16 @@ enum CommandType {
 
 enum InventoryMovementType {
   INITIAL_STOCK
+
   PURCHASE
+  PURCHASE_CANCEL
+
   SALE
+  SALE_CANCEL
+
   ADJUSTMENT_IN
   ADJUSTMENT_OUT
+
   TRANSFER_IN
   TRANSFER_OUT
 }

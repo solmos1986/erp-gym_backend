@@ -24,54 +24,27 @@ const router = express.Router();
 // =========================
 // ➕ CREAR PARTNER
 // =========================
-router.post(
-  "/",
-  requireAuth,
-  requirePermission("TENANT_PARTNER_CREATE"),
-  createPartner
-);
+router.post("/", requireAuth, requirePermission("TENANT_PARTNER_CREATE"), createPartner);
 
 // =========================
 // 📋 LISTAR PARTNERS
 // =========================
-router.get(
-  "/",
-  requireAuth,
-  requirePermission("TENANT_PARTNER_VIEW"),
-  getPartners
-);
+router.get("/", requireAuth, requirePermission("TENANT_PARTNER_VIEW"), getPartners);
 
 // =========================
 // 🔍 OBTENER PARTNER
 // =========================
-router.get(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PARTNER_VIEW"),
-  tenantGuard,
-  getPartnerById
-);
+router.get("/:id", requireAuth, requirePermission("TENANT_PARTNER_VIEW"), tenantGuard, getPartnerById);
 
 // =========================
 // ✏️ ACTUALIZAR PARTNER
 // =========================
-router.put(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PARTNER_EDIT"),
-  tenantGuard,
-  updatePartner
-);
+router.put("/:id", requireAuth, requirePermission("TENANT_PARTNER_EDIT"), tenantGuard, updatePartner);
 
 // =========================
 // ❌ DESACTIVAR PARTNER
 // =========================
-router.delete(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PARTNER_DELETE"),
-  deletePartner
-);
+router.delete("/:id", requireAuth, requirePermission("TENANT_PARTNER_DELETE"), deletePartner);
 
 // =========================
 // 🖼️ AGREGAR IMAGEN
@@ -85,33 +58,19 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const storage = multer.diskStorage({
-
   destination: uploadDir,
 
-  filename: (
-    req,
-    file,
-    cb
-  ) => {
-
-    cb(
-      null,
-      Date.now() + ".jpg"
-    );
-
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + ".jpg");
   }
-
 });
 
 const upload = multer({
-
   storage,
 
   limits: {
-    fileSize:
-      300 * 1024
+    fileSize: 300 * 1024
   }
-
 });
 
 router.post(
@@ -119,15 +78,11 @@ router.post(
 
   requireAuth,
 
-  requirePermission(
-    "TENANT_PARTNER_EDIT"
-  ),
+  requirePermission("TENANT_PARTNER_EDIT"),
 
   tenantGuard,
 
-  upload.single(
-    "file"
-  ),
+  upload.single("file"),
 
   addPartnerImage
 );
@@ -140,9 +95,7 @@ router.put(
 
   requireAuth,
 
-  requirePermission(
-    "TENANT_PARTNER_EDIT"
-  ),
+  requirePermission("TENANT_PARTNER_EDIT"),
 
   activatePartner
 );
@@ -151,81 +104,44 @@ router.put(
 // 📥 IMPORTAR CLIENTES EXCEL
 // =========================
 
-const excelDir =
-"uploads/excel";
+const excelDir = "uploads/excel";
 
-if (
-  !fs.existsSync(
-    excelDir
-  )
-) {
-
+if (!fs.existsSync(excelDir)) {
   fs.mkdirSync(
     excelDir,
 
     {
-      recursive:true
+      recursive: true
     }
-
   );
-
 }
 
-const excelStorage =
-multer.diskStorage({
+const excelStorage = multer.diskStorage({
+  destination: excelDir,
 
-  destination:
-  excelDir,
-
-  filename:
-  (
-    req,
-    file,
-    cb
-  ) => {
-
+  filename: (req, file, cb) => {
     cb(
-
       null,
 
-      Date.now()
-
-      +
-
-      path.extname(
-        file.originalname
-      )
-
+      Date.now() + path.extname(file.originalname)
     );
-
   }
-
 });
 
-const excelUpload =
-multer({
-
-  storage:
-  excelStorage
-
+const excelUpload = multer({
+  storage: excelStorage
 });
 
 router.post(
-
   "/import-excel",
 
   requireAuth,
 
-  requirePermission(
-    "TENANT_PARTNER_CREATE"
-  ),
+  requirePermission("TENANT_PARTNER_CREATE"),
 
-  excelUpload.single(
-    "file"
-  ),
+  excelUpload.single("file"),
 
   importPartnersFromExcel
-
 );
 
 export default router;

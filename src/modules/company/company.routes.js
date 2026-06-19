@@ -22,22 +22,12 @@ const router = express.Router();
 // =========================
 // ➕ CREAR COMPANY
 // =========================
-router.post(
-  "/register",
-  requireAuth,
-  requirePermission("SYSTEM_COMPANIES_CREATE"),
-  registerCompany
-);
+router.post("/register", requireAuth, requirePermission("SYSTEM_COMPANIES_CREATE"), registerCompany);
 
 // =========================
 // 📋 LISTAR
 // =========================
-router.get(
-  "/",
-  requireAuth,
-  requirePermission("SYSTEM_COMPANIES_VIEW"),
-  getCompanies
-);
+router.get("/", requireAuth, requirePermission("SYSTEM_COMPANIES_VIEW"), getCompanies);
 
 // =========================
 // 🔍 OBTENER
@@ -45,40 +35,24 @@ router.get(
 router.get(
   "/:id",
   requireAuth,
-  
+
   getCompanyById
 );
 
 // =========================
 // ✏️ UPDATE
 // =========================
-router.put(
-  "/:id",
-  requireAuth,
-  requirePermission("SYSTEM_COMPANIES_EDIT"),
-  updateCompany
-);
+router.put("/:id", requireAuth, requirePermission("SYSTEM_COMPANIES_EDIT"), updateCompany);
 
 // =========================
 // ❌ DELETE
 // =========================
-router.delete(
-  "/:id",
-  requireAuth,
-  requirePermission("SYSTEM_COMPANIES_DELETE"),
-  deleteCompany
-);
+router.delete("/:id", requireAuth, requirePermission("SYSTEM_COMPANIES_DELETE"), deleteCompany);
 
 // =========================
 // ✅ ACTIVATE
 // =========================
-router.patch(
-  "/:id/activate",
-  requireAuth,
-  requirePermission("SYSTEM_COMPANIES_EDIT"),
-  activateCompany
-);
-
+router.patch("/:id/activate", requireAuth, requirePermission("SYSTEM_COMPANIES_EDIT"), activateCompany);
 
 // ==========================================
 // 🖼️ LOGO (🔥 IGUAL QUE PARTNER)

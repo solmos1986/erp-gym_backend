@@ -7,12 +7,7 @@ const prisma = new PrismaClient();
 // ➕ CREAR MOVIMIENTO
 // =========================
 export const createInventoryMovement = async (req, res) => {
-  const {
-    productId,
-    movementType,
-    quantity,
-    notes
-  } = req.body;
+  const { productId, movementType, quantity, notes } = req.body;
 
   try {
     // =========================
@@ -31,11 +26,7 @@ export const createInventoryMovement = async (req, res) => {
       });
     }
 
-    if (
-      quantity === undefined ||
-      quantity === null ||
-      Number(quantity) <= 0
-    ) {
+    if (quantity === undefined || quantity === null || Number(quantity) <= 0) {
       return res.status(400).json({
         message: "La cantidad debe ser mayor a cero"
       });
@@ -110,7 +101,6 @@ export const createInventoryMovement = async (req, res) => {
       message: "Movimiento registrado correctamente",
       movement
     });
-
   } catch (error) {
     console.error("Error creando movimiento:", error);
 
@@ -123,24 +113,27 @@ export const createInventoryMovement = async (req, res) => {
 // 📋 LISTAR MOVIMIENTOS
 // =========================
 export const getInventoryMovements = async (req, res) => {
-  const {
-    productId,
-    movementType
-  } = req.query;
+  const { productId, movementType } = req.query;
 
   try {
+    const where = {
+      companyId: req.user.companyId
+    };
+
+    if (!req.user.isOwner) {
+      where.branchId = req.user.branchId;
+    }
+
+    if (productId) {
+      where.productId = productId;
+    }
+
+    if (movementType) {
+      where.movementType = movementType;
+    }
+
     const movements = await prisma.inventoryMovement.findMany({
-      where: {
-        ...applyTenantFilter(req),
-
-        ...(productId && {
-          productId
-        }),
-
-        ...(movementType && {
-          movementType
-        })
-      },
+      where,
 
       include: {
         product: {
@@ -159,11 +152,11 @@ export const getInventoryMovements = async (req, res) => {
         },
 
         createdBy: {
-            select: {
-                id: true,
-                fullName: true,
-                email: true
-            }
+          select: {
+            id: true,
+            fullName: true,
+            email: true
+          }
         }
       },
 
@@ -173,11 +166,10 @@ export const getInventoryMovements = async (req, res) => {
     });
 
     res.json(movements);
-
   } catch (error) {
     console.error(error);
 
-     res.status(500).json({
+    res.status(500).json({
       message: error.message,
       code: error.code
     });
@@ -191,11 +183,17 @@ export const getInventoryMovementById = async (req, res) => {
   const { id } = req.params;
 
   try {
+    const where = {
+      id,
+      companyId: req.user.companyId
+    };
+
+    if (!req.user.isOwner) {
+      where.branchId = req.user.branchId;
+    }
+
     const movement = await prisma.inventoryMovement.findFirst({
-      where: {
-        id,
-        ...applyTenantFilter(req)
-      },
+      where,
 
       include: {
         product: true,
@@ -211,11 +209,10 @@ export const getInventoryMovementById = async (req, res) => {
     }
 
     res.json(movement);
-
   } catch (error) {
     console.error(error);
 
-     res.status(500).json({
+    res.status(500).json({
       message: error.message,
       code: error.code
     });
@@ -226,10 +223,16 @@ export const getInventoryMovementById = async (req, res) => {
 // =========================
 export const getStockByBranch = async (req, res) => {
   try {
+    const where = {
+      companyId: req.user.companyId
+    };
+
+    if (!req.user.isOwner) {
+      where.branchId = req.user.branchId;
+    }
+
     const movements = await prisma.inventoryMovement.findMany({
-      where: {
-        ...applyTenantFilter(req)
-      },
+      where,
 
       include: {
         product: {
@@ -263,6 +266,7 @@ export const getStockByBranch = async (req, res) => {
         case "PURCHASE":
         case "ADJUSTMENT_IN":
         case "TRANSFER_IN":
+        case "SALE_CANCEL":
           item.stock += Number(movement.quantity);
           break;
 
@@ -275,7 +279,6 @@ export const getStockByBranch = async (req, res) => {
     }
 
     return res.json(Array.from(stockMap.values()));
-
   } catch (error) {
     console.error("Error obteniendo stock:", error);
 
@@ -297,11 +300,17 @@ export const getKardex = async (req, res) => {
       });
     }
 
+    const where = {
+      companyId: req.user.companyId,
+      productId
+    };
+
+    if (!req.user.isOwner) {
+      where.branchId = req.user.branchId;
+    }
+
     const movements = await prisma.inventoryMovement.findMany({
-      where: {
-        productId,
-        ...applyTenantFilter(req)
-      },
+      where,
 
       include: {
         product: {
@@ -330,12 +339,7 @@ export const getKardex = async (req, res) => {
     const kardex = movements.map((movement) => {
       const qty = Number(movement.quantity);
 
-      const isEntry = [
-        "INITIAL_STOCK",
-        "PURCHASE",
-        "ADJUSTMENT_IN",
-        "TRANSFER_IN"
-      ].includes(movement.movementType);
+      const isEntry = ["INITIAL_STOCK", "PURCHASE", "ADJUSTMENT_IN", "TRANSFER_IN", "SALE_CANCEL"].includes(movement.movementType);
 
       const input = isEntry ? qty : 0;
       const output = isEntry ? 0 : qty;
@@ -362,7 +366,6 @@ export const getKardex = async (req, res) => {
     });
 
     return res.json(kardex);
-
   } catch (error) {
     console.error("Error obteniendo kardex:", error);
 

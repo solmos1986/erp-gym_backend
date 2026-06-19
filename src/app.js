@@ -16,28 +16,37 @@ import membershipRoutes from "./modules/membership/membership.routes.js";
 import commandRoutes from "./modules/command/command.routes.js";
 import deviceRoutes from "./modules/device/device.routes.js";
 import agentRoutes from "./modules/agent/agent.routes.js";
-import { startMembershipExpirationJob } from './jobs/membershipsExpiration.job.js';
+import { startMembershipExpirationJob } from "./jobs/membershipsExpiration.job.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import productCategoryRoutes from "./modules/productCategory/productCategory.routes.js";
 import productRoutes from "./modules/product/product.routes.js";
 import inventoryMovementRoutes from "./modules/inventoryMovement/inventoryMovement.routes.js";
-
+import cashRegisterRoutes from "./modules/cashRegister/cashRegister.routes.js";
+import cashMovementRoutes from "./modules/cashMovement/cashMovement.routes.js";
+import saleRoutes from "./modules/sale/sale.routes.js";
+import productSaleRoutes from "./modules/productSale/productSale.routes.js";
+import purchaseRoutes from "./modules/purchase/purchase.routes.js";
+import inventoryRoutes from "./modules/inventory/inventory.routes.js";
+import reportsRoutes from "./modules/report/reports.routes.js";
+import businessTemplateRoutes from "./modules/businessTemplate/businessTemplate.routes.js";
 const app = express();
 
 // =============================
 // 🔥 MIDDLEWARES GLOBALES
 // =============================
-app.use(cors({
-  origin: ['https://gymcloud.aplus-security.com','http://localhost:5173'], // Reemplaza esto con el dominio de tu frontend
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true // Si estás utilizando cookies o sesiones
-}));
+app.use(
+  cors({
+    origin: ["https://gymcloud.aplus-security.com", "http://localhost:5173"], // Reemplaza esto con el dominio de tu frontend
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true // Si estás utilizando cookies o sesiones
+  })
+);
 startMembershipExpirationJob();
-app.set('trust proxy', true);
+app.set("trust proxy", true);
 app.use(express.json());
 
 // 🔥🔥🔥 IMPORTANTE (SERVIR IMÁGENES)
-app.use('/uploads', express.static('uploads'));
+app.use("/uploads", express.static("uploads"));
 
 // =============================
 // 🚀 ROUTES
@@ -81,6 +90,29 @@ app.use("/products", productRoutes);
 // MOVIMIENTOS DE INVENTARIO
 app.use("/inventory-movements", inventoryMovementRoutes);
 
+// CAJA
+app.use("/cash-registers", cashRegisterRoutes);
+
+// MOVIMIENTOS DE CAJA
+app.use("/cash-movements", cashMovementRoutes);
+
+// VENTAS
+app.use("/sales", saleRoutes);
+
+// VENTAS DE PRODUCTOSs
+app.use("/product-sales", productSaleRoutes);
+
+// PURCHASES
+app.use("/purchases", purchaseRoutes);
+
+// INVENTARIO
+app.use("/inventory", inventoryRoutes);
+
+// REPORTES
+app.use("/reports", reportsRoutes);
+
+// BUSINESS TEMPLATES
+app.use("/business-templates", businessTemplateRoutes);
 // =============================
 // 🧪 HEALTH CHECK
 // =============================
@@ -101,10 +133,12 @@ app.use((req, res) => {
 // 🔥 ERROR GLOBAL HANDLER
 // =============================
 app.use((err, req, res, next) => {
-  
+  console.error("🔥 ERROR:");
+  console.error(err);
 
   res.status(500).json({
-    message: "Error interno del servidor"
+    message: err.message,
+    stack: process.env.NODE_ENV !== "production" ? err.stack : undefined
   });
 });
 

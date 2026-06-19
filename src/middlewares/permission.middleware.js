@@ -3,14 +3,9 @@ export const requirePermission = (permissions) => {
     const userPermissions = req.user.permissions || [];
 
     // 🔥 SI ES STRING → convertir a array
-    const permsArray = Array.isArray(permissions)
-      ? permissions
-      : [permissions];
+    const permsArray = Array.isArray(permissions) ? permissions : [permissions];
 
-    const hasPermission = permsArray.some(p =>
-      userPermissions.includes(p)
-    );
-    
+    const hasPermission = permsArray.some((p) => userPermissions.includes(p));
 
     if (!hasPermission) {
       return res.status(403).json({

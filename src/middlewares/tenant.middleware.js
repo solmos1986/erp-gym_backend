@@ -1,11 +1,11 @@
 import prisma from "../config/prisma.js";
 
 export const tenantGuard = async (req, res, next) => {
-//   console.log("TENANT GUARD:", {
-//   user: req.user,
-//   body: req.body,
-//   query: req.query
-// });
+  //   console.log("TENANT GUARD:", {
+  //   user: req.user,
+  //   body: req.body,
+  //   query: req.query
+  // });
   try {
     // 1️⃣ validar user del token
     const user = req.user;
@@ -69,7 +69,6 @@ export const tenantGuard = async (req, res, next) => {
 
     next();
   } catch (error) {
-    
     res.status(500).json({
       message: "Error en tenant guard"
     });

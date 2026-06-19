@@ -3,26 +3,19 @@ import * as dashboardService from "./dashboard.service.js";
 //////////////////////////////////////
 // 📋 SUMMARY
 //////////////////////////////////////
-export const getDashboardSummary = async (
-  req,
-  res
-) => {
+export const getDashboardSummary = async (req, res) => {
   try {
-    const data =
-      await dashboardService.getDashboardSummary({
-        companyId: req.user.companyId,
-        branchId: req.user.branchId
-      });
+    const data = await dashboardService.getDashboardSummary({
+      companyId: req.user.companyId,
+      branchId: req.user.branchId
+    });
 
     res.json(data);
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
-      message:
-        "Error obteniendo dashboard"
+      message: "Error obteniendo dashboard"
     });
   }
 };
@@ -30,57 +23,39 @@ export const getDashboardSummary = async (
 //////////////////////////////////////
 // 📈 SALES LAST 7 DAYS
 //////////////////////////////////////
-export const getSalesLast7Days = async (
-  req,
-  res
-) => {
+export const getSalesLast7Days = async (req, res) => {
   try {
-
-    const data =
-      await dashboardService.getSalesLast7Days({
-        companyId: req.user.companyId,
-        branchId: req.user.branchId
-      });
+    const data = await dashboardService.getSalesLast7Days({
+      companyId: req.user.companyId,
+      branchId: req.user.branchId
+    });
 
     res.json(data);
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
-      message:
-        "Error obteniendo gráfico"
+      message: "Error obteniendo gráfico"
     });
   }
 };
 //////////////////////////////////////
 // 💰 REVENUE COMPARISON
 //////////////////////////////////////
-export const getRevenueComparison =
-async (req, res) => {
-
+export const getRevenueComparison = async (req, res) => {
   try {
+    const data = await dashboardService.getRevenueComparison({
+      companyId: req.user.companyId,
 
-    const data =
-      await dashboardService
-      .getRevenueComparison({
-        companyId:
-          req.user.companyId,
-
-        branchId:
-          req.user.branchId
-      });
+      branchId: req.user.branchId
+    });
 
     res.json(data);
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
-      message:
-        "Error revenue comparison"
+      message: "Error revenue comparison"
     });
   }
 };
@@ -88,31 +63,20 @@ async (req, res) => {
 //////////////////////////////////////
 // 📅 REGISTRATIONS
 //////////////////////////////////////
-export const
-getRegistrationsComparison =
-async (req, res) => {
-
+export const getRegistrationsComparison = async (req, res) => {
   try {
+    const data = await dashboardService.getRegistrationsComparison({
+      companyId: req.user.companyId,
 
-    const data =
-      await dashboardService
-      .getRegistrationsComparison({
-        companyId:
-          req.user.companyId,
-
-        branchId:
-          req.user.branchId
-      });
+      branchId: req.user.branchId
+    });
 
     res.json(data);
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
-      message:
-        "Error registrations"
+      message: "Error registrations"
     });
   }
 };
@@ -120,31 +84,20 @@ async (req, res) => {
 //////////////////////////////////////
 // 🍩 PLAN DISTRIBUTION
 //////////////////////////////////////
-export const
-getPlanDistribution =
-async (req, res) => {
-
+export const getPlanDistribution = async (req, res) => {
   try {
+    const data = await dashboardService.getPlanDistribution({
+      companyId: req.user.companyId,
 
-    const data =
-      await dashboardService
-      .getPlanDistribution({
-        companyId:
-          req.user.companyId,
-
-        branchId:
-          req.user.branchId
-      });
+      branchId: req.user.branchId
+    });
 
     res.json(data);
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
-      message:
-        "Error plan distribution"
+      message: "Error plan distribution"
     });
   }
 };

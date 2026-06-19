@@ -12,7 +12,6 @@ export const createUser = async (req, res) => {
   // 🔥 DEBUG
   try {
     const result = await prisma.$transaction(async (tx) => {
-
       // 1. VALIDAR EMAIL
       const existingUser = await tx.user.findUnique({
         where: { email }
@@ -71,7 +70,7 @@ export const createUser = async (req, res) => {
 
       // 6. ASIGNAR ROLES
       await tx.userRole.createMany({
-        data: roles.map(roleId => ({
+        data: roles.map((roleId) => ({
           userId: user.id,
           roleId,
           companyId: req.user.companyId
@@ -85,10 +84,7 @@ export const createUser = async (req, res) => {
       message: "Usuario creado correctamente",
       user: result
     });
-
   } catch (error) {
-    
-
     res.status(400).json({
       message: error.message || "Error creando usuario"
     });
@@ -113,8 +109,6 @@ export const getUsers = async (req, res) => {
 
     res.json(users);
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error obteniendo usuarios"
     });
@@ -149,8 +143,6 @@ export const getUserById = async (req, res) => {
 
     res.json(user);
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error obteniendo usuario"
     });
@@ -179,7 +171,6 @@ export const updateUser = async (req, res) => {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-
       // VALIDAR SUCURSAL
       if (branchId) {
         const branch = await tx.branch.findFirst({
@@ -235,7 +226,7 @@ export const updateUser = async (req, res) => {
       // RECREAR ROLES
       if (roles && roles.length > 0) {
         await tx.userRole.createMany({
-          data: roles.map(roleId => ({
+          data: roles.map((roleId) => ({
             userId: id,
             roleId,
             companyId: req.user.companyId
@@ -250,10 +241,7 @@ export const updateUser = async (req, res) => {
       message: "Usuario actualizado correctamente",
       user: result
     });
-
   } catch (error) {
-    
-
     res.status(400).json({
       message: error.message || "Error actualizando usuario"
     });
@@ -286,10 +274,7 @@ export const deleteUser = async (req, res) => {
     });
 
     res.json({ message: "Usuario desactivado" });
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error eliminando usuario"
     });

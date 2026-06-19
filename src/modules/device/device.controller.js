@@ -38,16 +38,7 @@ export const createDevice = async (req, res) => {
 
     const companyId = req.user.companyId;
 
-    const {
-      name,
-      ip,
-      port,
-      username,
-      password,
-      deviceType,
-      brand,
-      branchId
-    } = req.body;
+    const { name, ip, port, username, password, deviceType, brand, branchId } = req.body;
 
     // 🔒 validar sucursal
     const branch = await prisma.branch.findFirst({
@@ -77,8 +68,6 @@ export const createDevice = async (req, res) => {
 
     res.status(201).json(device);
   } catch (error) {
-    
-
     if (error.code === "P2002") {
       return res.status(400).json({
         message: "Ya existe un dispositivo con esa IP en esta sucursal"
@@ -105,11 +94,11 @@ export const getDevices = async (req, res) => {
       },
       include: {
         branch: true
-         //commands: {
-         //  where: {
-          //   status: "PROCESSING"
-         //  }
-         //}
+        //commands: {
+        //  where: {
+        //   status: "PROCESSING"
+        //  }
+        //}
       },
       orderBy: {
         createdAt: "desc"
@@ -120,7 +109,7 @@ export const getDevices = async (req, res) => {
     const HEARTBEAT_TIMEOUT = 45000; // 45s
     const now = new Date();
 
-    const mapped = devices.map(d => {
+    const mapped = devices.map((d) => {
       const diff = d.lastSeenAt ? now - new Date(d.lastSeenAt) : Infinity;
       const isAlive = diff < HEARTBEAT_TIMEOUT;
 
@@ -131,7 +120,7 @@ export const getDevices = async (req, res) => {
 
         // 🟠 si está ejecutando algo
         //if (d.commands.length > 0) {
-         // status = "BUSY";
+        // status = "BUSY";
         //}
 
         // 🔴 si agent dice desconectado
@@ -147,11 +136,8 @@ export const getDevices = async (req, res) => {
     });
 
     res.json(mapped);
-
   } catch (error) {
-    
-    res.status(500).json({ message: "Error obteniendo devices",
-    error: error.message });
+    res.status(500).json({ message: "Error obteniendo devices", error: error.message });
   }
 };
 //////////////////////////////////////
@@ -178,7 +164,6 @@ export const getDeviceById = async (req, res) => {
 
     res.json(device);
   } catch (error) {
-    
     res.status(500).json({ message: "Error obteniendo device" });
   }
 };
@@ -199,16 +184,7 @@ export const updateDevice = async (req, res) => {
       return res.status(404).json({ message: "Device no encontrado" });
     }
 
-    let {
-      name,
-      ip,
-      port,
-      username,
-      password,
-      deviceType,
-      brand,
-      branchId
-    } = req.body;
+    let { name, ip, port, username, password, deviceType, brand, branchId } = req.body;
 
     // 🔒 validar sucursal si viene
     if (branchId) {
@@ -246,9 +222,7 @@ export const updateDevice = async (req, res) => {
     });
 
     res.json(updated);
-
   } catch (error) {
-
     if (error.code === "P2002") {
       return res.status(400).json({
         message: "Ya existe un dispositivo con esa IP en esta sucursal"
@@ -287,7 +261,6 @@ export const deleteDevice = async (req, res) => {
 
     res.json({ message: "Device eliminado correctamente" });
   } catch (error) {
-    
     res.status(500).json({ message: "Error eliminando device" });
   }
 };

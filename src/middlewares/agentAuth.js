@@ -1,7 +1,7 @@
 export function agentAuth(req, res, next) {
   try {
     const auth = req.headers.authorization;
-    
+
     if (!auth) {
       return res.status(401).json({ message: "No autorizado" });
     }
@@ -26,9 +26,7 @@ export function agentAuth(req, res, next) {
     };
 
     next();
-
   } catch (error) {
-    
     res.status(500).json({ message: "Error en agent auth" });
   }
 }

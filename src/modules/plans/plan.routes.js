@@ -1,13 +1,6 @@
 import express from "express";
 
-import {
-  createPlan,
-  getPlans,
-  getPlanById,
-  updatePlan,
-  deletePlan,
-  activatePlan
-} from "./plan.controller.js";
+import { createPlan, getPlans, getPlanById, updatePlan, deletePlan, activatePlan } from "./plan.controller.js";
 
 import { requireAuth } from "../../middlewares/auth.middleware.js";
 import { requirePermission } from "../../middlewares/permission.middleware.js";
@@ -18,64 +11,31 @@ const router = express.Router();
 // =========================
 // ➕ CREAR PLAN
 // =========================
-router.post(
-  "/",
-  requireAuth,
-  requirePermission("TENANT_PLANS_CREATE"),
-  createPlan
-);
+router.post("/", requireAuth, requirePermission("TENANT_PLANS_CREATE"), createPlan);
 
 // =========================
 // 📋 LISTAR PLANES
 // =========================
-router.get(
-  "/",
-  requireAuth,
-  requirePermission("TENANT_PLANS_VIEW"),
-  getPlans
-);
+router.get("/", requireAuth, requirePermission("TENANT_PLANS_VIEW"), getPlans);
 
 // =========================
 // 🔍 OBTENER PLAN
 // =========================
-router.get(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PLANS_VIEW"),
-  tenantGuard,
-  getPlanById
-);
+router.get("/:id", requireAuth, requirePermission("TENANT_PLANS_VIEW"), tenantGuard, getPlanById);
 
 // =========================
 // ✏️ ACTUALIZAR PLAN
 // =========================
-router.put(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PLANS_EDIT"),
-  tenantGuard,
-  updatePlan
-);
+router.put("/:id", requireAuth, requirePermission("TENANT_PLANS_EDIT"), tenantGuard, updatePlan);
 
 // =========================
 // ❌ DESACTIVAR PLAN
 // =========================
-router.delete(
-  "/:id",
-  requireAuth,
-  requirePermission("TENANT_PLANS_DELETE"),
-  deletePlan
-);
+router.delete("/:id", requireAuth, requirePermission("TENANT_PLANS_DELETE"), deletePlan);
 
 // =========================
 // ✅ ACTIVAR PLAN
 // =========================
-router.put(
-  "/:id/activate",
-  requireAuth,
-  requirePermission("TENANT_PLANS_EDIT"),
-  tenantGuard,
-  activatePlan
-);
+router.put("/:id/activate", requireAuth, requirePermission("TENANT_PLANS_EDIT"), tenantGuard, activatePlan);
 
 export default router;

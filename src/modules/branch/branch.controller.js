@@ -8,8 +8,6 @@ const prisma = new PrismaClient();
 // 📋 LISTAR SUCURSALES
 // =========================
 export const getBranches = async (req, res) => {
-  
-
   try {
     const branches = await prisma.branch.findMany({
       where: applyTenantFilter(req),
@@ -17,21 +15,19 @@ export const getBranches = async (req, res) => {
         company: {
           select: {
             id: true,
-            name: true,
-          },
-        },
+            name: true
+          }
+        }
       },
       orderBy: {
-        createdAt: "desc",
-      },
+        createdAt: "desc"
+      }
     });
 
     res.json(branches);
   } catch (error) {
-    
-
     res.status(500).json({
-      message: "Error obteniendo sucursales",
+      message: "Error obteniendo sucursales"
     });
   }
 };
@@ -83,7 +79,6 @@ export const getBranches = async (req, res) => {
 //       agentKey: result.agentKey,
 //     });
 //   } catch (error) {
-    
 
 //     // 🔥 error por duplicado (name + companyId)
 //     if (error.code === "P2002") {
@@ -106,22 +101,22 @@ export const createBranch = async (req, res) => {
     // =========================
     if (!name) {
       return res.status(400).json({
-        message: "Nombre requerido",
+        message: "Nombre requerido"
       });
     }
 
     if (!companyId) {
       return res.status(400).json({
-        message: "Empresa requerida",
+        message: "Empresa requerida"
       });
     }
 
     // 🔐 SOLO SYSTEM (staff)
- if (!req.user?.permissions?.includes("SYSTEM_BRANCH_CREATE")) {
-  return res.status(403).json({
-    message: "No tienes permiso para crear sucursales"
-  });
-}
+    if (!req.user?.permissions?.includes("SYSTEM_BRANCH_CREATE")) {
+      return res.status(403).json({
+        message: "No tienes permiso para crear sucursales"
+      });
+    }
 
     // =========================
     // VALIDAR EMPRESA
@@ -140,13 +135,12 @@ export const createBranch = async (req, res) => {
     // TRANSACTION
     // =========================
     const result = await prisma.$transaction(async (tx) => {
-
       // 1️⃣ Crear sucursal
       const branch = await tx.branch.create({
         data: {
           name,
-          companyId,
-        },
+          companyId
+        }
       });
 
       // 2️⃣ Generar agentKey
@@ -158,8 +152,8 @@ export const createBranch = async (req, res) => {
           name: `Agent - ${branch.name}`,
           agentKey,
           companyId,
-          branchId: branch.id,
-        },
+          branchId: branch.id
+        }
       });
 
       return { branch, agentKey };
@@ -168,20 +162,19 @@ export const createBranch = async (req, res) => {
     return res.status(201).json({
       message: "Sucursal creada correctamente",
       branch: result.branch,
-      agentKey: result.agentKey, // 👈 solo mostrar una vez
+      agentKey: result.agentKey // 👈 solo mostrar una vez
     });
-
   } catch (error) {
     console.error("❌ ERROR CREATE BRANCH:", error);
 
     if (error.code === "P2002") {
       return res.status(400).json({
-        message: "Ya existe una sucursal con ese nombre",
+        message: "Ya existe una sucursal con ese nombre"
       });
     }
 
     return res.status(500).json({
-      message: "Error al crear sucursal",
+      message: "Error al crear sucursal"
     });
   }
 };

@@ -1,12 +1,23 @@
 export const applyTenantFilter = (req, where = {}) => {
-  // SYSTEM → no filtra
   if (!req.user.companyId) {
     return where;
   }
 
-  // TENANT → fuerza companyId
   return {
     ...where,
     companyId: req.user.companyId
   };
+};
+
+export const applyBranchScope = (req, where = {}) => {
+  const filter = {
+    ...where,
+    companyId: req.user.companyId
+  };
+
+  if (!req.user.isOwner) {
+    filter.branchId = req.user.branchId;
+  }
+
+  return filter;
 };

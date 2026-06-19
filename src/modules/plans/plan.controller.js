@@ -59,10 +59,7 @@ export const createPlan = async (req, res) => {
       message: "Plan creado correctamente",
       plan
     });
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: error.message || "Error creando plan"
     });
@@ -87,10 +84,7 @@ export const getPlans = async (req, res) => {
     });
 
     res.json(plans);
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error obteniendo planes",
       error: error.message
@@ -119,10 +113,7 @@ export const getPlanById = async (req, res) => {
     }
 
     res.json(plan);
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error obteniendo plan",
       error: error.message
@@ -182,10 +173,7 @@ export const updatePlan = async (req, res) => {
       message: "Plan actualizado correctamente",
       plan
     });
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error actualizando plan",
       error: error.message
@@ -200,17 +188,12 @@ export const deletePlan = async (req, res) => {
   const { id } = req.params;
 
   try {
-    
-    
-
     const plan = await prisma.plan.findFirst({
       where: {
         id,
         companyId: req.user.companyId
       }
     });
-
-    
 
     if (!plan) {
       return res.status(404).json({
@@ -223,15 +206,10 @@ export const deletePlan = async (req, res) => {
       data: { isActive: false }
     });
 
-    
-
     res.json({
       message: "Plan desactivado correctamente"
     });
-
   } catch (error) {
-    
-
     res.status(500).json({
       message: "Error desactivando plan",
       error: error.message
@@ -251,8 +229,7 @@ export const activatePlan = async (req, res) => {
     });
 
     res.json({ success: true });
-
   } catch (error) {
-    res.status(500).json({ message: 'Error activating plan', error: error.message });
+    res.status(500).json({ message: "Error activating plan", error: error.message });
   }
 };
