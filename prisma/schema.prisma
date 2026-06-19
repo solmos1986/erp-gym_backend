@@ -37,7 +37,7 @@ model Company {
   Sale                Sale[]
   purchases           Purchase[]
   businessTemplateId  String?
-  businessTemplate    BusinessTemplate? @relation(fields:   [businessTemplateId], references: [id])
+  businessTemplate    BusinessTemplate?    @relation(fields: [businessTemplateId], references: [id])
 }
 
 model User {
@@ -60,8 +60,9 @@ model User {
   closedCashRegisters       CashRegister[]      @relation("CashRegisterClosedBy")
   cashMovements             CashMovement[]
   cancelledCashMovements    CashMovement[]      @relation("CashMovementCancelledBy")
-  sales Sale[]
-  purchases Purchase[]
+  sales                     Sale[]
+  purchases                 Purchase[]
+
   @@index([companyId])
   @@index([branchId])
 }
@@ -81,14 +82,15 @@ model Role {
 }
 
 model Permission {
-  id                 String              @id @default(uuid())
-  code               String              @unique
-  description        String?
-  scope              RoleScope
-  isActive           Boolean             @default(true)
-  companyPermissions CompanyPermission[]
-  roles              RolePermission[]
-  businessTemplates  BusinessTemplatePermission[]
+  id                          String                       @id @default(uuid())
+  code                        String                       @unique
+  description                 String?
+  scope                       RoleScope
+  isActive                    Boolean                      @default(true)
+  companyPermissions          CompanyPermission[]
+  roles                       RolePermission[]
+  businessTemplatePermissions BusinessTemplatePermission[]
+  roleTemplatePermissions     RoleTemplatePermission[]
 }
 
 model RolePermission {
@@ -514,9 +516,9 @@ model Payment {
 model Sale {
   id String @id @default(uuid())
 
-  companyId String
-  branchId  String?
-  userId    String?
+  companyId  String
+  branchId   String?
+  userId     String?
   saleNumber Int?
   customerId String?
 
@@ -531,14 +533,14 @@ model Sale {
 
   notes String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   cancelledById String?
-  cancelledAt DateTime?
+  cancelledAt   DateTime?
 
-  company Company @relation(fields: [companyId], references: [id])
-  branch  Branch? @relation(fields: [branchId], references: [id])
-  user User? @relation(fields: [userId], references: [id])
+  company  Company  @relation(fields: [companyId], references: [id])
+  branch   Branch?  @relation(fields: [branchId], references: [id])
+  user     User?    @relation(fields: [userId], references: [id])
   customer Partner? @relation(fields: [customerId], references: [id])
 
   details SaleDetail[]
@@ -569,7 +571,7 @@ model SaleDetail {
 
   unitPrice Decimal @db.Decimal(18, 2)
 
-  unitCost   Decimal @db.Decimal(10,2)
+  unitCost Decimal @db.Decimal(10, 2)
 
   discount Decimal @default(0) @db.Decimal(18, 2)
 
@@ -586,36 +588,33 @@ model SaleDetail {
 model Purchase {
   id String @id @default(uuid())
 
-  companyId String
-  branchId String
-  userId String?
+  companyId      String
+  branchId       String
+  userId         String?
   purchaseNumber Int?
-  supplierId String
-
-  
+  supplierId     String
 
   purchaseDate DateTime @default(now())
 
-  subtotal Decimal @db.Decimal(18,2)
-  discount Decimal @default(0) @db.Decimal(18,2)
-  tax Decimal @default(0) @db.Decimal(18,2)
-  total Decimal @db.Decimal(18,2)
+  subtotal Decimal @db.Decimal(18, 2)
+  discount Decimal @default(0) @db.Decimal(18, 2)
+  tax      Decimal @default(0) @db.Decimal(18, 2)
+  total    Decimal @db.Decimal(18, 2)
 
   status PurchaseStatus @default(CONFIRMED)
 
   notes String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   cancelledById String?
-  cancelledAt DateTime?
+  cancelledAt   DateTime?
 
-  company Company @relation(fields: [companyId], references: [id])
-  branch Branch @relation(fields: [branchId], references: [id])
-  supplier Partner @relation(fields: [supplierId], references: [id])
-  user User? @relation(fields: [userId], references: [id])
-  details PurchaseDetail[]
-
+  company  Company          @relation(fields: [companyId], references: [id])
+  branch   Branch           @relation(fields: [branchId], references: [id])
+  supplier Partner          @relation(fields: [supplierId], references: [id])
+  user     User?            @relation(fields: [userId], references: [id])
+  details  PurchaseDetail[]
 
   @@index([companyId])
   @@index([branchId])
@@ -629,41 +628,42 @@ model PurchaseDetail {
   id String @id @default(uuid())
 
   purchaseId String
-  productId String
+  productId  String
 
-  code String?
+  code        String?
   description String
 
-  quantity Decimal @db.Decimal(18,2)
+  quantity Decimal @db.Decimal(18, 2)
 
-  unitCost Decimal @db.Decimal(18,2)
+  unitCost Decimal @db.Decimal(18, 2)
 
-  total Decimal @db.Decimal(18,2)
+  total Decimal @db.Decimal(18, 2)
 
   purchase Purchase @relation(fields: [purchaseId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
 
   @@index([purchaseId])
   @@index([productId])
 }
 
 model BusinessTemplate {
-  id          String   @id @default(uuid())
-  code        String   @unique
+  id          String  @id @default(uuid())
+  code        String  @unique
   name        String
   description String?
 
-  isActive    Boolean  @default(true)
+  isActive Boolean @default(true)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  permissions BusinessTemplatePermission[]
-  companies   Company[]
+  permissions   BusinessTemplatePermission[]
+  companies     Company[]
+  roleTemplates RoleTemplate[]
 }
 
 model BusinessTemplatePermission {
-  id                 String @id @default(uuid())
+  id String @id @default(uuid())
 
   businessTemplateId String
   permissionId       String
@@ -673,6 +673,36 @@ model BusinessTemplatePermission {
   permission Permission @relation(fields: [permissionId], references: [id])
 
   @@unique([businessTemplateId, permissionId])
+}
+
+model RoleTemplate {
+  id String @id @default(uuid())
+
+  name String
+
+  businessTemplateId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessTemplate BusinessTemplate @relation(fields: [businessTemplateId], references: [id])
+
+  permissions RoleTemplatePermission[]
+
+  @@unique([businessTemplateId, name])
+}
+
+model RoleTemplatePermission {
+  id String @id @default(uuid())
+
+  roleTemplateId String
+  permissionId   String
+
+  roleTemplate RoleTemplate @relation(fields: [roleTemplateId], references: [id])
+
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleTemplateId, permissionId])
 }
 
 enum PurchaseStatus {

@@ -1,6 +1,43 @@
 import prisma from "../../lib/prisma.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+
+const copyRoleTemplatesToCompany = async (tx, businessTemplateId, companyId) => {
+  const rolesMap = {};
+
+  const roleTemplates = await tx.roleTemplate.findMany({
+    where: {
+      businessTemplateId
+    },
+    include: {
+      permissions: true
+    }
+  });
+
+  for (const template of roleTemplates) {
+    const role = await tx.role.create({
+      data: {
+        name: template.name,
+        scope: "TENANT",
+        companyId
+      }
+    });
+
+    rolesMap[template.name] = role.id;
+
+    if (template.permissions.length) {
+      await tx.rolePermission.createMany({
+        data: template.permissions.map((p) => ({
+          roleId: role.id,
+          permissionId: p.permissionId
+        })),
+        skipDuplicates: true
+      });
+    }
+  }
+
+  return rolesMap;
+};
 // =========================
 // ➕ CREAR COMPANY
 // =========================
@@ -51,6 +88,7 @@ export const registerCompany = async (req, res) => {
           businessTemplateId
         }
       });
+      const roles = await copyRoleTemplatesToCompany(tx, businessTemplateId, company.id);
       const templatePermissions = await tx.businessTemplatePermission.findMany({
         where: {
           businessTemplateId
@@ -80,27 +118,27 @@ export const registerCompany = async (req, res) => {
         }
       });
 
-      // ========================
-      // CREAR ROLE OWNER
-      // ========================
-      const ownerRole = await tx.role.create({
-        data: {
-          name: "OWNER",
-          scope: "TENANT",
-          companyId: company.id
-        }
-      });
+      // // ========================
+      // // CREAR ROLE OWNER
+      // // ========================
+      // const ownerRole = await tx.role.create({
+      //   data: {
+      //     name: "OWNER",
+      //     scope: "TENANT",
+      //     companyId: company.id
+      //   }
+      // });
 
-      // ========================
-      // ASIGNAR PERMISOS AL ROLE
-      // ========================
-      await tx.rolePermission.createMany({
-        data: templatePermissions.map((p) => ({
-          roleId: ownerRole.id,
-          permissionId: p.permissionId
-        })),
-        skipDuplicates: true
-      });
+      // // ========================
+      // // ASIGNAR PERMISOS AL ROLE
+      // // ========================
+      // await tx.rolePermission.createMany({
+      //   data: templatePermissions.map((p) => ({
+      //     roleId: ownerRole.id,
+      //     permissionId: p.permissionId
+      //   })),
+      //   skipDuplicates: true
+      // });
 
       // ========================
       // HASH PASSWORD
@@ -127,7 +165,7 @@ export const registerCompany = async (req, res) => {
       await tx.userRole.create({
         data: {
           userId: user.id,
-          roleId: ownerRole.id,
+          roleId: roles.OWNER,
           companyId: company.id
         }
       });
