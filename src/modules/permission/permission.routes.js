@@ -6,7 +6,8 @@ import {
   getPermissionById,
   createPermission,
   updatePermission,
-  togglePermission
+  togglePermission,
+  getCompanyPermissions
 } from "./permission.controller.js";
 
 import { requireAuth } from "../../middlewares/auth.middleware.js";
@@ -24,6 +25,8 @@ router.get("/", requireAuth, requirePermission(["SYSTEM_COMPANIES_VIEW", "TENANT
 // =========================
 
 router.get("/catalog", requireAuth, requirePermission("SYSTEM_COMPANIES_VIEW"), getAllPermissions);
+
+router.get("/company-catalog", requireAuth, requirePermission("TENANT_ROLES_VIEW"), getCompanyPermissions);
 
 router.get("/:id", requireAuth, requirePermission("SYSTEM_COMPANIES_VIEW"), getPermissionById);
 

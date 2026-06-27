@@ -195,3 +195,62 @@ export const togglePermission = async (req, res) => {
     });
   }
 };
+
+// ======================================================
+// 📋 CATÁLOGO DE PERMISOS DEL BUSINESS TEMPLATE
+// Solo devuelve los permisos que pertenecen al
+// BusinessTemplate de la empresa autenticada.
+// ======================================================
+export const getCompanyPermissions = async (req, res) => {
+  console.log("🚀 ENTRE A getCompanyPermissions");
+  try {
+    const companyId = req.user.companyId;
+
+    // =========================
+    // EMPRESA
+    // =========================
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: {
+        businessTemplateId: true
+      }
+    });
+
+    if (!company) {
+      return res.status(404).json({
+        message: "Empresa no encontrada"
+      });
+    }
+
+    if (!company.businessTemplateId) {
+      return res.status(400).json({
+        message: "La empresa no tiene un BusinessTemplate asignado."
+      });
+    }
+
+    // =========================
+    // PERMISOS DEL TEMPLATE
+    // =========================
+    const permissions = await prisma.permission.findMany({
+      where: {
+        businessTemplatePermissions: {
+          some: {
+            businessTemplateId: company.businessTemplateId
+          }
+        },
+        isActive: true
+      },
+      orderBy: {
+        code: "asc"
+      }
+    });
+
+    res.json(permissions);
+  } catch (error) {
+    console.error("❌ ERROR getCompanyPermissions:", error);
+
+    res.status(500).json({
+      message: "Error obteniendo catálogo de permisos."
+    });
+  }
+};

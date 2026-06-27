@@ -1,6 +1,7 @@
 import prisma from "../../lib/prisma.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { syncOwnerPermissionsFromTemplate } from "../businessTemplate/businessTemplate.controller.js";
 
 const copyRoleTemplatesToCompany = async (tx, businessTemplateId, companyId) => {
   const rolesMap = {};
@@ -47,7 +48,7 @@ const copyRoleTemplatesToCompany = async (tx, businessTemplateId, companyId) => 
 export const registerCompany = async (req, res) => {
   const { name, email, password, businessTemplateId, logoUrl } = req.body;
   try {
-    const fullName = 'OWNER';
+    const fullName = "OWNER";
     const result = await prisma.$transaction(async (tx) => {
       // ========================
       // VALIDACIONES
@@ -120,28 +121,6 @@ export const registerCompany = async (req, res) => {
           branchId: branch.id
         }
       });
-
-      // // ========================
-      // // CREAR ROLE OWNER
-      // // ========================
-      // const ownerRole = await tx.role.create({
-      //   data: {
-      //     name: "OWNER",
-      //     scope: "TENANT",
-      //     companyId: company.id
-      //   }
-      // });
-
-      // // ========================
-      // // ASIGNAR PERMISOS AL ROLE
-      // // ========================
-      // await tx.rolePermission.createMany({
-      //   data: templatePermissions.map((p) => ({
-      //     roleId: ownerRole.id,
-      //     permissionId: p.permissionId
-      //   })),
-      //   skipDuplicates: true
-      // });
 
       // ========================
       // HASH PASSWORD
@@ -323,7 +302,7 @@ export const updateCompany = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const { name, email, fullName, password, permissions } = req.body;
+    const { name, email, fullName, password, permissions, businessTemplateId } = req.body;
 
     await prisma.$transaction(async (tx) => {
       // =========================
@@ -382,11 +361,30 @@ export const updateCompany = async (req, res) => {
       // =========================
       // 🏢 UPDATE COMPANY
       // =========================
+      const companyData = {};
+
       if (name !== undefined) {
+        companyData.name = name;
+      }
+
+      if (businessTemplateId !== undefined) {
+        companyData.businessTemplateId = businessTemplateId;
+      }
+
+      if (Object.keys(companyData).length > 0) {
         await tx.company.update({
           where: { id },
-          data: { name }
+          data: companyData
         });
+
+        // ======================================================
+        // ETAPA 1
+        // Si la empresa tiene BusinessTemplate sincronizamos
+        // el OWNER agregando únicamente los permisos faltantes.
+        // ======================================================
+        if (businessTemplateId && businessTemplateId !== company.businessTemplateId) {
+          await syncOwnerPermissionsFromTemplate(tx, id);
+        }
       }
 
       // =========================
@@ -418,8 +416,7 @@ export const updateCompany = async (req, res) => {
           skipDuplicates: true
         });
 
-        // 🔥 (OPCIONAL PERO PRO)
-        // actualizar también permisos del ROLE OWNER
+        // actualizar permisos del OWNER
         const ownerRole = await tx.role.findFirst({
           where: {
             companyId: id,

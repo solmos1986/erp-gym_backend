@@ -690,3 +690,79 @@ const syncRoleTemplateCreation = async (tx, roleTemplateId) => {
     }
   }
 };
+
+// ======================================================
+// 🔄 SINCRONIZAR PERMISOS DEL OWNER DESDE EL TEMPLATE
+// ETAPA 1: SOLO AGREGA PERMISOS FALTANTES
+// ======================================================
+export const syncOwnerPermissionsFromTemplate = async (tx, companyId) => {
+  // =========================
+  // EMPRESA
+  // =========================
+  const company = await tx.company.findUnique({
+    where: { id: companyId }
+  });
+
+  if (!company || !company.businessTemplateId) {
+    return;
+  }
+
+  // =========================
+  // ROLE TEMPLATE OWNER
+  // =========================
+  const ownerTemplate = await tx.roleTemplate.findFirst({
+    where: {
+      businessTemplateId: company.businessTemplateId,
+      name: "OWNER"
+    },
+    include: {
+      permissions: true
+    }
+  });
+
+  if (!ownerTemplate) {
+    return;
+  }
+
+  // =========================
+  // ROLE OWNER DEL TENANT
+  // =========================
+  const ownerRole = await tx.role.findFirst({
+    where: {
+      companyId,
+      name: "OWNER"
+    },
+    include: {
+      permissions: true
+    }
+  });
+
+  if (!ownerRole) {
+    return;
+  }
+
+  // =========================
+  // PERMISOS ACTUALES DEL OWNER
+  // =========================
+  const currentPermissionIds = new Set(ownerRole.permissions.map((p) => p.permissionId));
+
+  // =========================
+  // PERMISOS FALTANTES
+  // =========================
+  const missingPermissions = ownerTemplate.permissions
+    .filter((p) => !currentPermissionIds.has(p.permissionId))
+    .map((p) => ({
+      roleId: ownerRole.id,
+      permissionId: p.permissionId
+    }));
+
+  // =========================
+  // INSERTAR SOLO LOS FALTANTES
+  // =========================
+  if (missingPermissions.length > 0) {
+    await tx.rolePermission.createMany({
+      data: missingPermissions,
+      skipDuplicates: true
+    });
+  }
+};
