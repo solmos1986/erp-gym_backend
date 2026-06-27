@@ -86,10 +86,13 @@ export const retryMembershipSale = async (req, res) => {
 
     return res.json({ success: true });
   } catch (error) {
-    return res.status(500).json({
-      error: "Error retrying membership sale commands"
-    });
-  }
+  console.error("Error retrying membership sale commands:", error);
+
+  return res.status(500).json({
+    error: error.message,
+    details: error
+  });
+}
 };
 
 //=========================

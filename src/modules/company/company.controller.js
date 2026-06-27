@@ -19,7 +19,9 @@ const copyRoleTemplatesToCompany = async (tx, businessTemplateId, companyId) => 
       data: {
         name: template.name,
         scope: "TENANT",
-        companyId
+        companyId,
+        // NUEVO
+        roleTemplateId: template.id
       }
     });
 
@@ -43,8 +45,9 @@ const copyRoleTemplatesToCompany = async (tx, businessTemplateId, companyId) => 
 // =========================
 
 export const registerCompany = async (req, res) => {
-  const { name, fullName, email, password, businessTemplateId, logoUrl } = req.body;
+  const { name, email, password, businessTemplateId, logoUrl } = req.body;
   try {
+    const fullName = 'OWNER';
     const result = await prisma.$transaction(async (tx) => {
       // ========================
       // VALIDACIONES

@@ -7,7 +7,7 @@ import cors from "cors";
 import authRoutes from "./modules/auth/auth.routes.js";
 import companyRoutes from "./modules/company/company.routes.js";
 import roleRoutes from "./modules/tenantrole/tenantrole.routes.js";
-import permissionRoutes from "./modules/permission/tenantpermission.routes.js";
+import permissionRoutes from "./modules/permission/permission.routes.js";
 import userRoutes from "./modules/user/user.routes.js";
 import branchRoutes from "./modules/branch/branch.routes.js";
 import planRoutes from "./modules/plans/plan.routes.js";
@@ -36,8 +36,8 @@ const app = express();
 // =============================
 app.use(
   cors({
-    origin: ["https://gymcloud.aplus-security.com", "http://localhost:5173"], // Reemplaza esto con el dominio de tu frontend
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: ["https://gymcloud.aplus-security.com", "http://localhost:8080"], // Reemplaza esto con el dominio de tu frontend
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true // Si estás utilizando cookies o sesiones
   })
 );
@@ -51,7 +51,7 @@ app.use("/uploads", express.static("uploads"));
 // =============================
 // 🚀 ROUTES
 // =============================
-
+console.log("llegue app.js");
 // 🔐 AUTH
 app.use("/auth", authRoutes);
 
@@ -61,8 +61,8 @@ app.use("/branches", branchRoutes);
 app.use("/users", userRoutes);
 
 // 🔐 RBAC
-app.use("/tenant-roles", roleRoutes);
-app.use("/tenant-permissions", permissionRoutes);
+app.use("/roles", roleRoutes);
+app.use("/permissions", permissionRoutes);
 
 // 💰 NEGOCIO
 app.use("/plan", planRoutes);

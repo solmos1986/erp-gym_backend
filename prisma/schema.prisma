@@ -75,6 +75,9 @@ model Role {
   isActive    Boolean          @default(true)
   createdAt   DateTime         @default(now())
   company     Company?         @relation(fields: [companyId], references: [id])
+    // NUEVO
+  roleTemplateId  String?
+  roleTemplate    RoleTemplate? @relation(fields: [roleTemplateId], references: [id])
   permissions RolePermission[]
   users       UserRole[]
 
@@ -660,6 +663,7 @@ model BusinessTemplate {
   permissions   BusinessTemplatePermission[]
   companies     Company[]
   roleTemplates RoleTemplate[]
+  accountTemplates  AccountTemplate[]
 }
 
 model BusinessTemplatePermission {
@@ -687,6 +691,9 @@ model RoleTemplate {
 
   businessTemplate BusinessTemplate @relation(fields: [businessTemplateId], references: [id])
 
+   // NUEVO
+  roles Role[]
+
   permissions RoleTemplatePermission[]
 
   @@unique([businessTemplateId, name])
@@ -703,6 +710,47 @@ model RoleTemplatePermission {
   permission Permission @relation(fields: [permissionId], references: [id])
 
   @@unique([roleTemplateId, permissionId])
+}
+
+model AccountTemplate {
+  id                  String   @id @default(uuid())
+
+  businessTemplateId  String?
+  businessTemplate    BusinessTemplate? @relation(fields: [businessTemplateId], references: [id])
+
+  parentId            String?
+  parent              AccountTemplate?  @relation("AccountTemplateHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children            AccountTemplate[] @relation("AccountTemplateHierarchy")
+
+  code                String
+  name                String
+
+  accountingClass     AccountingClass
+  nature              AccountNature
+
+  allowMovements      Boolean  @default(true)
+
+  isActive            Boolean  @default(true)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([businessTemplateId, code])
+  @@index([businessTemplateId])
+  @@index([parentId])
+}
+
+enum AccountingClass {
+  ASSET       // Activo
+  LIABILITY   // Pasivo
+  EQUITY      // Patrimonio
+  INCOME      // Ingresos
+  EXPENSE     // Egresos
+}
+
+enum AccountNature {
+  DEBIT
+  CREDIT
 }
 
 enum PurchaseStatus {

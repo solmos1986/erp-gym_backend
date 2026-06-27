@@ -387,7 +387,7 @@ export const getAllStatus = async (companyId) => {
 // =========================
 // 🔄 REINTENTAR PAGO
 // =========================
-export const retryMembershipSale = async ({ membershipSaleId, companyId }) => {
+export const retryMembershipSale = async ({ membershipSaleId, companyId, branchId }) => {
   return await prisma.command.updateMany({
     where: {
       membershipSaleId,
