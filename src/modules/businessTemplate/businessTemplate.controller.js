@@ -447,11 +447,11 @@ export const deleteRoleTemplate = async (req, res) => {
 //==========================
 // SYNC BUSINESS TEMPLATE PERMISSIONS
 //============================
-
+// ======================================================
+// 🔄 ETAPA 2
+// SINCRONIZAR TODAS LAS EMPRESAS DE UN BUSINESS TEMPLATE
+// ======================================================
 export const syncBusinessTemplatePermissions = async (tx, businessTemplateId) => {
-  // =========================
-  // EMPRESAS DE LA VERTICAL
-  // =========================
   const companies = await tx.company.findMany({
     where: {
       businessTemplateId
@@ -461,99 +461,8 @@ export const syncBusinessTemplatePermissions = async (tx, businessTemplateId) =>
     }
   });
 
-  const companyIds = companies.map((c) => c.id);
-
-  if (!companyIds.length) {
-    return;
-  }
-
-  // =========================
-  // BUSINESS TEMPLATE PERMISSIONS
-  // =========================
-  const templatePermissions = await tx.businessTemplatePermission.findMany({
-    where: {
-      businessTemplateId
-    }
-  });
-
-  const templatePermissionIds = templatePermissions.map((p) => p.permissionId);
-
-  // =========================
-  // SINCRONIZAR COMPANY PERMISSION
-  // =========================
-
-  await tx.companyPermission.deleteMany({
-    where: {
-      companyId: {
-        in: companyIds
-      }
-    }
-  });
-
-  if (templatePermissionIds.length) {
-    await tx.companyPermission.createMany({
-      data: companyIds.flatMap((companyId) =>
-        templatePermissionIds.map((permissionId) => ({
-          companyId,
-          permissionId
-        }))
-      ),
-      skipDuplicates: true
-    });
-  }
-
-  // =========================
-  // ROLE TEMPLATES DE LA VERTICAL
-  // =========================
-  const roleTemplates = await tx.roleTemplate.findMany({
-    where: {
-      businessTemplateId
-    },
-    include: {
-      permissions: true
-    }
-  });
-
-  // =========================
-  // SINCRONIZAR ROLE PERMISSION
-  // =========================
-  for (const roleTemplate of roleTemplates) {
-    const roles = await tx.role.findMany({
-      where: {
-        roleTemplateId: roleTemplate.id
-      },
-      select: {
-        id: true
-      }
-    });
-
-    const roleIds = roles.map((r) => r.id);
-
-    if (!roleIds.length) {
-      continue;
-    }
-
-    const permissionIds = roleTemplate.permissions.map((p) => p.permissionId);
-
-    await tx.rolePermission.deleteMany({
-      where: {
-        roleId: {
-          in: roleIds
-        }
-      }
-    });
-
-    if (permissionIds.length) {
-      await tx.rolePermission.createMany({
-        data: roleIds.flatMap((roleId) =>
-          permissionIds.map((permissionId) => ({
-            roleId,
-            permissionId
-          }))
-        ),
-        skipDuplicates: true
-      });
-    }
+  for (const company of companies) {
+    await syncOwnerPermissionsFromTemplateFull(tx, company.id);
   }
 };
 
@@ -765,4 +674,96 @@ export const syncOwnerPermissionsFromTemplate = async (tx, companyId) => {
       skipDuplicates: true
     });
   }
+};
+
+// ======================================================
+// 🔄 SINCRONIZAR OWNER COMPLETO DESDE EL TEMPLATE
+// ETAPA 2: AGREGA Y ELIMINA PERMISOS
+// ======================================================
+export const syncOwnerPermissionsFromTemplateFull = async (tx, companyId) => {
+  // =========================
+  // EMPRESA
+  // =========================
+  const company = await tx.company.findUnique({
+    where: { id: companyId }
+  });
+
+  if (!company || !company.businessTemplateId) {
+    return;
+  }
+
+  // =========================
+  // ROLE TEMPLATE OWNER
+  // =========================
+  const ownerTemplate = await tx.roleTemplate.findUnique({
+    where: {
+      businessTemplateId_name: {
+        businessTemplateId: company.businessTemplateId,
+        name: "OWNER"
+      }
+    },
+    include: {
+      permissions: true
+    }
+  });
+
+  if (!ownerTemplate) {
+    return;
+  }
+
+  // =========================
+  // OWNER DEL TENANT
+  // =========================
+  const ownerRole = await tx.role.findFirst({
+    where: {
+      companyId,
+      name: "OWNER"
+    },
+    include: {
+      permissions: true
+    }
+  });
+
+  if (!ownerRole) {
+    return;
+  }
+
+  // =========================
+  // IDS TEMPLATE
+  // =========================
+  const templatePermissionIds = ownerTemplate.permissions.map((p) => p.permissionId);
+
+  // =========================
+  // IDS OWNER
+  // =========================
+  const ownerPermissionIds = ownerRole.permissions.map((p) => p.permissionId);
+
+  // =========================
+  // AGREGAR
+  // =========================
+  const missingPermissions = templatePermissionIds
+    .filter((id) => !ownerPermissionIds.includes(id))
+    .map((permissionId) => ({
+      roleId: ownerRole.id,
+      permissionId
+    }));
+
+  if (missingPermissions.length > 0) {
+    await tx.rolePermission.createMany({
+      data: missingPermissions,
+      skipDuplicates: true
+    });
+  }
+
+  // =========================
+  // ELIMINAR
+  // =========================
+  await tx.rolePermission.deleteMany({
+    where: {
+      roleId: ownerRole.id,
+      permissionId: {
+        notIn: templatePermissionIds
+      }
+    }
+  });
 };
