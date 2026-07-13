@@ -36,7 +36,7 @@ const app = express();
 // =============================
 app.use(
   cors({
-    origin: ["https://gymcloud.aplus-security.com", "http://localhost:8080"], // Reemplaza esto con el dominio de tu frontend
+    origin: ["https://gymcloud.aplus-security.com", "http://localhost:8080", "http://127.0.0.1:8080"], // Reemplaza esto con el dominio de tu frontend
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true // Si estás utilizando cookies o sesiones
   })

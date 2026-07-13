@@ -2,89 +2,273 @@ import { PrismaClient } from "@prisma/client";
 import { applyTenantFilter } from "../../utils/tenant.util.js";
 
 const prisma = new PrismaClient();
-
 // =========================
 // ➕ CREAR PRODUCTO
 // =========================
 export const createProduct = async (req, res) => {
-  const { code, name, description, costPrice, salePrice, minStock, productCategoryId } = req.body;
+  let {
+    code,
+    barcode,
+    name,
+    description,
+    imageUrl,
+    productType,
+    sourceType,
+    unit,
+    costPrice,
+    salePrice,
+    minStock,
+    maxStock,
+    reorderPoint,
+    productCategoryId
+  } = req.body;
 
   try {
+    // =========================
+    // Normalizar datos
+    // =========================
+
+    code = code?.trim().toUpperCase();
+    barcode = barcode?.trim() || null;
+    name = name?.trim();
+    description = description?.trim() || null;
+    imageUrl = imageUrl?.trim() || null;
+
+    // =========================
+    // Validaciones obligatorias
+    // =========================
+
+    if (!code) {
+      return res.status(400).json({
+        message: "El código es obligatorio."
+      });
+    }
+
     if (!name) {
       return res.status(400).json({
-        message: "El nombre es obligatorio"
+        message: "El nombre es obligatorio."
+      });
+    }
+
+    if (!productCategoryId) {
+      return res.status(400).json({
+        message: "La categoría es obligatoria."
+      });
+    }
+
+    if (!productType) {
+      return res.status(400).json({
+        message: "El tipo de producto es obligatorio."
+      });
+    }
+
+    if (!sourceType) {
+      return res.status(400).json({
+        message: "El origen del producto es obligatorio."
+      });
+    }
+
+    if (!unit) {
+      return res.status(400).json({
+        message: "La unidad es obligatoria."
       });
     }
 
     if (salePrice === undefined || salePrice === null) {
       return res.status(400).json({
-        message: "El precio de venta es obligatorio"
+        message: "El precio de venta es obligatorio."
       });
     }
 
-    // validar categoría
-    if (productCategoryId) {
-      const category = await prisma.productCategory.findFirst({
+    // =========================
+    // Validaciones numéricas
+    // =========================
+
+    if (Number(salePrice) < 0) {
+      return res.status(400).json({
+        message: "El precio de venta no puede ser negativo."
+      });
+    }
+
+    if (minStock !== undefined && Number(minStock) < 0) {
+      return res.status(400).json({
+        message: "El stock mínimo no puede ser negativo."
+      });
+    }
+
+    if (maxStock !== undefined && Number(maxStock) < 0) {
+      return res.status(400).json({
+        message: "El stock máximo no puede ser negativo."
+      });
+    }
+
+    if (reorderPoint !== undefined && Number(reorderPoint) < 0) {
+      return res.status(400).json({
+        message: "El punto de reposición no puede ser negativo."
+      });
+    }
+
+    if (
+      minStock !== undefined &&
+      maxStock !== undefined &&
+      Number(maxStock) < Number(minStock)
+    ) {
+      return res.status(400).json({
+        message: "El stock máximo no puede ser menor al stock mínimo."
+      });
+    }
+
+    // =========================
+    // Validaciones de negocio
+    // =========================
+
+    if (
+      productType === "RAW_MATERIAL" &&
+      sourceType !== "PURCHASE"
+    ) {
+      return res.status(400).json({
+        message: "Una materia prima solo puede tener origen PURCHASE."
+      });
+    }
+
+    if (
+      productType === "SERVICE" &&
+      sourceType === "PRODUCTION"
+    ) {
+      return res.status(400).json({
+        message: "Un servicio no puede producirse."
+      });
+    }
+
+    // =========================
+    // Código único
+    // =========================
+
+    const existingCode = await prisma.product.findFirst({
+      where: {
+        companyId: req.user.companyId,
+        code
+      }
+    });
+
+    if (existingCode) {
+      return res.status(400).json({
+        message: "Ya existe un producto con ese código."
+      });
+    }
+
+    // =========================
+    // Código de barras único
+    // =========================
+
+    if (barcode) {
+      const existingBarcode = await prisma.product.findFirst({
         where: {
-          id: productCategoryId,
-          ...applyTenantFilter(req)
+          companyId: req.user.companyId,
+          barcode
         }
       });
 
-      if (!category) {
+      if (existingBarcode) {
         return res.status(400).json({
-          message: "La categoría no existe"
+          message: "Ya existe un producto con ese código de barras."
         });
       }
     }
 
+    // =========================
+    // Validar categoría
+    // =========================
+
+    const category = await prisma.productCategory.findFirst({
+      where: {
+        id: productCategoryId,
+        ...applyTenantFilter(req)
+      }
+    });
+
+    if (!category) {
+      return res.status(400).json({
+        message: "La categoría no existe."
+      });
+    }
+
+    // =========================
+    // Crear producto
+    // =========================
+   
     const product = await prisma.product.create({
       data: {
-        code,
-        name,
-        description,
-        costPrice,
-        salePrice,
-        minStock,
         company: {
           connect: {
             id: req.user.companyId
           }
         },
 
-        ...(productCategoryId && {
-          category: {
-            connect: {
-              id: productCategoryId
-            }
+        category: {
+          connect: {
+            id: productCategoryId
           }
-        })
+        },
+
+        code,
+        barcode,
+        name,
+        description,
+        imageUrl,
+
+        productType,
+        sourceType,
+
+        unit,
+
+        currentStock: 0,
+        costPrice: costPrice ?? 0,
+
+        salePrice,
+
+        minStock,
+        maxStock,
+        reorderPoint
       },
 
       include: {
-        category: true
+          category: {
+              select: {
+                  id: true,
+                  name: true
+              }
+          }
       }
     });
 
     res.status(201).json({
-      message: "Producto creado correctamente",
+      message: "Producto creado correctamente.",
       product
     });
+
   } catch (error) {
+
     console.error(error);
 
     res.status(500).json({
       message: error.message,
       code: error.code
     });
+
   }
 };
-
 // =========================
 // 📋 LISTAR PRODUCTOS
 // =========================
 export const getProducts = async (req, res) => {
-  const { isActive } = req.query;
+  const {
+    isActive,
+    productType,
+    sourceType,
+    productCategoryId,
+    search
+  } = req.query;
 
   try {
     const products = await prisma.product.findMany({
@@ -93,6 +277,41 @@ export const getProducts = async (req, res) => {
 
         ...(isActive !== undefined && {
           isActive: isActive === "true"
+        }),
+
+        ...(productType && {
+          productType
+        }),
+
+        ...(sourceType && {
+          sourceType
+        }),
+
+        ...(productCategoryId && {
+          productCategoryId
+        }),
+
+        ...(search && {
+          OR: [
+            {
+              code: {
+                contains: search,
+                mode: "insensitive"
+              }
+            },
+            {
+              barcode: {
+                contains: search,
+                mode: "insensitive"
+              }
+            },
+            {
+              name: {
+                contains: search,
+                mode: "insensitive"
+              }
+            }
+          ]
         })
       },
 
@@ -111,12 +330,16 @@ export const getProducts = async (req, res) => {
     });
 
     res.json(products);
+
   } catch (error) {
+
     console.error(error);
 
     res.status(500).json({
-      message: "Error obteniendo productos"
+      message: "Error obteniendo productos",
+      error: error.message
     });
+
   }
 };
 
@@ -127,6 +350,7 @@ export const getProductById = async (req, res) => {
   const { id } = req.params;
 
   try {
+
     const product = await prisma.product.findFirst({
       where: {
         id,
@@ -137,6 +361,7 @@ export const getProductById = async (req, res) => {
         category: {
           select: {
             id: true,
+            code: true,
             name: true
           }
         }
@@ -150,12 +375,15 @@ export const getProductById = async (req, res) => {
     }
 
     res.json(product);
+
   } catch (error) {
+
     console.error(error);
 
     res.status(500).json({
       message: "Error obteniendo producto"
     });
+
   }
 };
 
@@ -165,9 +393,28 @@ export const getProductById = async (req, res) => {
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
 
-  const { code, name, description, costPrice, salePrice, minStock, productCategoryId, isActive } = req.body;
+  let {
+    code,
+    barcode,
+    name,
+    description,
+    imageUrl,
+    productType,
+    sourceType,
+    unit,
+    salePrice,
+    minStock,
+    maxStock,
+    reorderPoint,
+    productCategoryId,
+    isActive
+  } = req.body;
 
   try {
+    // =========================
+    // Verificar existencia
+    // =========================
+
     const existingProduct = await prisma.product.findFirst({
       where: {
         id,
@@ -177,25 +424,188 @@ export const updateProduct = async (req, res) => {
 
     if (!existingProduct) {
       return res.status(404).json({
-        message: "Producto no encontrado"
+        message: "Producto no encontrado."
       });
     }
 
-    // validar categoría
-    if (productCategoryId) {
-      const category = await prisma.productCategory.findFirst({
+    // =========================
+    // Normalizar datos
+    // =========================
+
+    code = code?.trim().toUpperCase();
+    barcode = barcode?.trim() || null;
+    name = name?.trim();
+    description = description?.trim() || null;
+    imageUrl = imageUrl?.trim() || null;
+
+    // =========================
+    // Validaciones obligatorias
+    // =========================
+
+    if (!code) {
+      return res.status(400).json({
+        message: "El código es obligatorio."
+      });
+    }
+
+    if (!name) {
+      return res.status(400).json({
+        message: "El nombre es obligatorio."
+      });
+    }
+
+    if (!productCategoryId) {
+      return res.status(400).json({
+        message: "La categoría es obligatoria."
+      });
+    }
+
+    if (!productType) {
+      return res.status(400).json({
+        message: "El tipo de producto es obligatorio."
+      });
+    }
+
+    if (!sourceType) {
+      return res.status(400).json({
+        message: "El tipo de abastecimiento es obligatorio."
+      });
+    }
+
+    if (!unit) {
+      return res.status(400).json({
+        message: "La unidad es obligatoria."
+      });
+    }
+
+    if (salePrice === undefined || salePrice === null) {
+      return res.status(400).json({
+        message: "El precio de venta es obligatorio."
+      });
+    }
+
+    // =========================
+    // Validaciones numéricas
+    // =========================
+
+    if (Number(salePrice) < 0) {
+      return res.status(400).json({
+        message: "El precio de venta no puede ser negativo."
+      });
+    }
+
+    if (minStock !== undefined && Number(minStock) < 0) {
+      return res.status(400).json({
+        message: "El stock mínimo no puede ser negativo."
+      });
+    }
+
+    if (maxStock !== undefined && Number(maxStock) < 0) {
+      return res.status(400).json({
+        message: "El stock máximo no puede ser negativo."
+      });
+    }
+
+    if (reorderPoint !== undefined && Number(reorderPoint) < 0) {
+      return res.status(400).json({
+        message: "El punto de reposición no puede ser negativo."
+      });
+    }
+
+    if (
+      minStock !== undefined &&
+      maxStock !== undefined &&
+      Number(maxStock) < Number(minStock)
+    ) {
+      return res.status(400).json({
+        message: "El stock máximo no puede ser menor al stock mínimo."
+      });
+    }
+
+    // =========================
+    // Validaciones de negocio
+    // =========================
+
+    if (
+      productType === "SERVICE" &&
+      sourceType !== "SERVICE"
+    ) {
+      return res.status(400).json({
+        message: "Un servicio solo puede tener sourceType SERVICE."
+      });
+    }
+
+    if (
+      productType === "INVENTORY" &&
+      sourceType === "SERVICE"
+    ) {
+      return res.status(400).json({
+        message: "Un producto de inventario no puede tener sourceType SERVICE."
+      });
+    }
+
+    // =========================
+    // Código único
+    // =========================
+
+    const existingCode = await prisma.product.findFirst({
+      where: {
+        companyId: req.user.companyId,
+        code,
+        NOT: {
+          id
+        }
+      }
+    });
+
+    if (existingCode) {
+      return res.status(400).json({
+        message: "Ya existe otro producto con ese código."
+      });
+    }
+
+    // =========================
+    // Código de barras único
+    // =========================
+
+    if (barcode) {
+      const existingBarcode = await prisma.product.findFirst({
         where: {
-          id: productCategoryId,
-          ...applyTenantFilter(req)
+          companyId: req.user.companyId,
+          barcode,
+          NOT: {
+            id
+          }
         }
       });
 
-      if (!category) {
+      if (existingBarcode) {
         return res.status(400).json({
-          message: "La categoría no existe"
+          message: "Ya existe otro producto con ese código de barras."
         });
       }
     }
+
+    // =========================
+    // Validar categoría
+    // =========================
+
+    const category = await prisma.productCategory.findFirst({
+      where: {
+        id: productCategoryId,
+        ...applyTenantFilter(req)
+      }
+    });
+
+    if (!category) {
+      return res.status(400).json({
+        message: "La categoría no existe."
+      });
+    }
+
+    // =========================
+    // Actualizar
+    // =========================
 
     const product = await prisma.product.update({
       where: {
@@ -204,41 +614,57 @@ export const updateProduct = async (req, res) => {
 
       data: {
         code,
+        barcode,
         name,
         description,
-        costPrice,
+        imageUrl,
+
+        productType,
+        sourceType,
+
+        unit,
+
         salePrice,
+
         minStock,
+        maxStock,
+        reorderPoint,
+
         isActive,
 
-        ...(productCategoryId && {
-          category: {
-            connect: {
-              id: productCategoryId
-            }
+        category: {
+          connect: {
+            id: productCategoryId
           }
-        })
+        }
       },
 
       include: {
-        category: true
+          category: {
+              select: {
+                  id: true,
+                  name: true
+              }
+          }
       }
     });
 
     res.json({
-      message: "Producto actualizado correctamente",
+      message: "Producto actualizado correctamente.",
       product
     });
+
   } catch (error) {
+
     console.error(error);
 
     res.status(500).json({
       message: error.message,
       code: error.code
     });
+
   }
 };
-
 // =========================
 // ❌ DESACTIVAR PRODUCTO
 // =========================
@@ -246,6 +672,7 @@ export const deleteProduct = async (req, res) => {
   const { id } = req.params;
 
   try {
+
     const product = await prisma.product.findFirst({
       where: {
         id,
@@ -259,25 +686,31 @@ export const deleteProduct = async (req, res) => {
       });
     }
 
+    // TODO:
+    // Cuando implementemos InventoryMovement,
+    // impedir desactivar productos con movimientos.
+
     await prisma.product.update({
       where: {
         id
       },
-
       data: {
         isActive: false
       }
     });
 
     res.json({
-      message: "Producto desactivado correctamente"
+      message: "Producto desactivado correctamente."
     });
+
   } catch (error) {
+
     console.error(error);
 
     res.status(500).json({
       message: "Error desactivando producto"
     });
+
   }
 };
 
@@ -288,6 +721,7 @@ export const activateProduct = async (req, res) => {
   const { id } = req.params;
 
   try {
+
     const product = await prisma.product.findFirst({
       where: {
         id,
@@ -312,13 +746,16 @@ export const activateProduct = async (req, res) => {
     });
 
     res.json({
-      message: "Producto activado correctamente"
+      message: "Producto activado correctamente."
     });
+
   } catch (error) {
+
     console.error(error);
 
     res.status(500).json({
       message: "Error activando producto"
     });
+
   }
 };

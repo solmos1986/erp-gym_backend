@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 // LOGIN
 // =======================
 export const login = async (req, res) => {
+  console.log("LOGIN REQUEST BODY:", req.body); // 🔥 DEBUG
   const { email, password } = req.body;
   console.log("usuario", email, "contraseña: ", password);
   // 🔥 DEBUG

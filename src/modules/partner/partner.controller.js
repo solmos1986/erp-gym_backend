@@ -40,12 +40,12 @@ const endOfDay = (date) => {
 // =========================
 // ➕ CREAR PARTNER
 // =========================
+
 // export const createPartner = async (req, res) => {
 //   const { name, document, phone, email, address, type, imageUrl } = req.body;
 
 //   try {
 //     const result = await prisma.$transaction(async (tx) => {
-
 //       // 🔒 VALIDAR companyId
 //       if (!req.user.companyId) {
 //         throw new Error("CompanyId no definido");
@@ -60,24 +60,27 @@ const endOfDay = (date) => {
 //       }
 
 //       // 🧼 SANITIZAR CAMPOS
-//       const cleanDocument = document ? String(document) : null;
+//       const cleanDocument = document?.trim();
 //       const cleanPhone = phone ? String(phone) : null;
 //       const cleanEmail = email || null;
 //       const cleanAddress = address || null;
 //       const cleanImageUrl = imageUrl?.trim() || null;
 
-//       // 🔍 VALIDAR DOCUMENTO ÚNICO
-//       if (cleanDocument) {
-//         const existing = await tx.partner.findFirst({
-//           where: {
-//             document: cleanDocument,
-//             companyId: req.user.companyId
-//           }
-//         });
+//       // 🚫 VALIDAR DOCUMENTO OBLIGATORIO
+//       if (!cleanDocument) {
+//         throw new Error("El documento es obligatorio");
+//       }
 
-//         if (existing) {
-//           throw new Error("El documento ya está registrado");
+//       // 🔍 VALIDAR DOCUMENTO ÚNICO
+//       const existing = await tx.partner.findFirst({
+//         where: {
+//           document: cleanDocument,
+//           companyId: req.user.companyId
 //         }
+//       });
+
+//       if (existing) {
+//         throw new Error("El documento ya está registrado");
 //       }
 
 //       // ➕ CREAR PARTNER
@@ -113,9 +116,7 @@ const endOfDay = (date) => {
 //       message: "Cliente creado correctamente",
 //       partner: result
 //     });
-
 //   } catch (error) {
-
 //     res.status(400).json({
 //       message: error.message || "Error creando cliente"
 //     });
@@ -139,28 +140,47 @@ export const createPartner = async (req, res) => {
         throw new Error("Tipo inválido");
       }
 
+      // 🔍 OBTENER TIPO DE NEGOCIO
+      const company = await tx.company.findUnique({
+        where: {
+          id: req.user.companyId
+        },
+        include: {
+          businessTemplate: true
+        }
+      });
+
+      if (!company) {
+        throw new Error("Empresa no encontrada");
+      }
+
+      const requiresDocument =
+        company.businessTemplate?.code === "GYM";
+
       // 🧼 SANITIZAR CAMPOS
-      const cleanDocument = document?.trim();
+      const cleanDocument = document?.trim() || null;
       const cleanPhone = phone ? String(phone) : null;
       const cleanEmail = email || null;
       const cleanAddress = address || null;
       const cleanImageUrl = imageUrl?.trim() || null;
 
-      // 🚫 VALIDAR DOCUMENTO OBLIGATORIO
-      if (!cleanDocument) {
+      // 🚫 DOCUMENTO OBLIGATORIO SOLO PARA GYM
+      if (requiresDocument && !cleanDocument) {
         throw new Error("El documento es obligatorio");
       }
 
-      // 🔍 VALIDAR DOCUMENTO ÚNICO
-      const existing = await tx.partner.findFirst({
-        where: {
-          document: cleanDocument,
-          companyId: req.user.companyId
-        }
-      });
+      // 🔍 VALIDAR DOCUMENTO ÚNICO SOLO SI EXISTE
+      if (cleanDocument) {
+        const existing = await tx.partner.findFirst({
+          where: {
+            document: cleanDocument,
+            companyId: req.user.companyId
+          }
+        });
 
-      if (existing) {
-        throw new Error("El documento ya está registrado");
+        if (existing) {
+          throw new Error("El documento ya está registrado");
+        }
       }
 
       // ➕ CREAR PARTNER
@@ -173,12 +193,14 @@ export const createPartner = async (req, res) => {
           address: cleanAddress,
           type: safeType,
           company: {
-            connect: { id: req.user.companyId }
+            connect: {
+              id: req.user.companyId
+            }
           }
         }
       });
 
-      // 🖼️ CREAR IMAGEN (solo si válida)
+      // 🖼️ CREAR IMAGEN
       if (cleanImageUrl) {
         await tx.partnerImage.create({
           data: {
@@ -197,12 +219,13 @@ export const createPartner = async (req, res) => {
       partner: result
     });
   } catch (error) {
-    res.status(400).json({
-      message: error.message || "Error creando cliente"
-    });
-  }
-};
+  console.error(error);
 
+  res.status(400).json({
+    message: error.message,
+    stack: error.stack
+  });}
+};
 // =========================
 // 📋 LISTAR PARTNERS
 // =========================

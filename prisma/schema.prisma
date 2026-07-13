@@ -38,6 +38,7 @@ model Company {
   purchases           Purchase[]
   businessTemplateId  String?
   businessTemplate    BusinessTemplate?    @relation(fields: [businessTemplateId], references: [id])
+  ProductBoms         ProductBom[]
 }
 
 model User {
@@ -68,18 +69,18 @@ model User {
 }
 
 model Role {
-  id          String           @id @default(uuid())
-  name        String
-  scope       RoleScope
-  companyId   String?
-  isActive    Boolean          @default(true)
-  createdAt   DateTime         @default(now())
-  company     Company?         @relation(fields: [companyId], references: [id])
-    // NUEVO
-  roleTemplateId  String?
-  roleTemplate    RoleTemplate? @relation(fields: [roleTemplateId], references: [id])
-  permissions RolePermission[]
-  users       UserRole[]
+  id             String           @id @default(uuid())
+  name           String
+  scope          RoleScope
+  companyId      String?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  company        Company?         @relation(fields: [companyId], references: [id])
+  // NUEVO
+  roleTemplateId String?
+  roleTemplate   RoleTemplate?    @relation(fields: [roleTemplateId], references: [id])
+  permissions    RolePermission[]
+  users          UserRole[]
 
   @@unique([name, scope, companyId])
 }
@@ -320,29 +321,51 @@ model Command {
 model Product {
   id String @id @default(uuid())
 
-  companyId String
-  branchId  String?
-
+  // Relaciones
+  companyId         String
+  branchId          String?
   productCategoryId String?
 
+  // Información
   code        String?
+  barcode     String?
   name        String
   description String?
+  imageUrl    String?
 
-  costPrice Decimal? @db.Decimal(10, 2)
-  salePrice Decimal  @db.Decimal(10, 2)
+  // Tipo de producto
+  productType ProductType @default(FINISHED_PRODUCT)
+  sourceType  SourceType  @default(PURCHASE)
 
-  isActive Boolean @default(true)
+  // Inventario
+  inventoryControl Boolean @default(true)
+  unit             Unit    @default(UNIT)
 
-  minStock Int? @default(0)
+  // Valores cache (actualizados por InventoryMovement)
+  currentStock Decimal @default(0) @db.Decimal(18, 2)
+  costPrice    Decimal @default(0) @db.Decimal(18, 2)
+
+  // Comercial
+  salePrice Decimal @default(0) @db.Decimal(18, 2)
+
+  // Configuración
+  minStock     Decimal? @db.Decimal(18, 2)
+  maxStock     Decimal? @db.Decimal(18, 2)
+  reorderPoint Decimal? @db.Decimal(18, 2)
+
+  isForSale Boolean @default(true)
+  isActive  Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id])
-  branch  Branch? @relation(fields: [branchId], references: [id])
-
+  // Relaciones
+  company  Company          @relation(fields: [companyId], references: [id])
+  branch   Branch?          @relation(fields: [branchId], references: [id])
   category ProductCategory? @relation(fields: [productCategoryId], references: [id])
+
+  bom      ProductBom[]     @relation("ProductBoms")
+  bomItems ProductBomItem[] @relation("BomMaterials")
 
   inventoryMovements InventoryMovement[]
   purchaseDetails    PurchaseDetail[]
@@ -350,6 +373,38 @@ model Product {
   @@index([companyId])
   @@index([branchId])
   @@index([productCategoryId])
+  @@index([code])
+  @@index([barcode])
+  @@index([name])
+}
+
+enum ProductType {
+  RAW_MATERIAL
+  FINISHED_PRODUCT
+  SERVICE
+}
+
+enum SourceType {
+  PURCHASE
+  PRODUCTION
+  BOTH
+}
+
+enum Unit {
+  UNIT
+  KG
+  GRAM
+  LITER
+  ML
+  BOX
+  PACKAGE
+  BOTTLE
+  METER
+  CM
+  MM
+  PAIR
+  ROLL
+  DOZEN
 }
 
 model ProductCategory {
@@ -369,6 +424,55 @@ model ProductCategory {
   products Product[]
 
   @@index([companyId])
+}
+
+model ProductBom {
+  id String @id @default(uuid())
+
+  companyId String
+  productId String
+
+  version Int     @default(1)
+  name    String?
+
+  description String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  product Product @relation("ProductBoms", fields: [productId], references: [id])
+
+  items ProductBomItem[]
+
+  @@unique([productId, version])
+  @@index([companyId])
+  @@index([productId])
+}
+
+model ProductBomItem {
+  id String @id @default(uuid())
+
+  bomId String
+
+  materialId String
+
+  quantity Decimal @db.Decimal(18, 4)
+
+  wastePercent Decimal @default(0) @db.Decimal(5, 2)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  bom ProductBom @relation(fields: [bomId], references: [id], onDelete: Cascade)
+
+  material Product @relation("BomMaterials", fields: [materialId], references: [id])
+
+  @@index([bomId])
+  @@index([materialId])
 }
 
 model InventoryMovement {
@@ -660,10 +764,10 @@ model BusinessTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  permissions   BusinessTemplatePermission[]
-  companies     Company[]
-  roleTemplates RoleTemplate[]
-  accountTemplates  AccountTemplate[]
+  permissions      BusinessTemplatePermission[]
+  companies        Company[]
+  roleTemplates    RoleTemplate[]
+  accountTemplates AccountTemplate[]
 }
 
 model BusinessTemplatePermission {
@@ -691,7 +795,7 @@ model RoleTemplate {
 
   businessTemplate BusinessTemplate @relation(fields: [businessTemplateId], references: [id])
 
-   // NUEVO
+  // NUEVO
   roles Role[]
 
   permissions RoleTemplatePermission[]
@@ -713,27 +817,27 @@ model RoleTemplatePermission {
 }
 
 model AccountTemplate {
-  id                  String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  businessTemplateId  String?
-  businessTemplate    BusinessTemplate? @relation(fields: [businessTemplateId], references: [id])
+  businessTemplateId String?
+  businessTemplate   BusinessTemplate? @relation(fields: [businessTemplateId], references: [id])
 
-  parentId            String?
-  parent              AccountTemplate?  @relation("AccountTemplateHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children            AccountTemplate[] @relation("AccountTemplateHierarchy")
+  parentId String?
+  parent   AccountTemplate?  @relation("AccountTemplateHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children AccountTemplate[] @relation("AccountTemplateHierarchy")
 
-  code                String
-  name                String
+  code String
+  name String
 
-  accountingClass     AccountingClass
-  nature              AccountNature
+  accountingClass AccountingClass
+  nature          AccountNature
 
-  allowMovements      Boolean  @default(true)
+  allowMovements Boolean @default(true)
 
-  isActive            Boolean  @default(true)
+  isActive Boolean @default(true)
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([businessTemplateId, code])
   @@index([businessTemplateId])
@@ -741,11 +845,11 @@ model AccountTemplate {
 }
 
 enum AccountingClass {
-  ASSET       // Activo
-  LIABILITY   // Pasivo
-  EQUITY      // Patrimonio
-  INCOME      // Ingresos
-  EXPENSE     // Egresos
+  ASSET // Activo
+  LIABILITY // Pasivo
+  EQUITY // Patrimonio
+  INCOME // Ingresos
+  EXPENSE // Egresos
 }
 
 enum AccountNature {
