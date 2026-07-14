@@ -6,22 +6,29 @@ const prisma = new PrismaClient();
 // ➕ CREAR PRODUCTO
 // =========================
 export const createProduct = async (req, res) => {
-  let {
-    code,
-    barcode,
-    name,
-    description,
-    imageUrl,
-    productType,
-    sourceType,
-    unit,
-    costPrice,
-    salePrice,
-    minStock,
-    maxStock,
-    reorderPoint,
-    productCategoryId
-  } = req.body;
+  // =========================
+// Datos recibidos
+// =========================
+
+const productData = req.body.product ?? req.body;
+const bom = req.body.bom ?? null;
+
+let {
+  code,
+  barcode,
+  name,
+  description,
+  imageUrl,
+  productType,
+  sourceType,
+  unit,
+  costPrice,
+  salePrice,
+  minStock,
+  maxStock,
+  reorderPoint,
+  productCategoryId
+} = productData;
 
   try {
     // =========================
@@ -194,10 +201,16 @@ export const createProduct = async (req, res) => {
     }
 
     // =========================
-    // Crear producto
-    // =========================
-   
-    const product = await prisma.product.create({
+// Crear producto + BOM
+// =========================
+
+const product = await prisma.$transaction(async (tx) => {
+
+  // =========================
+  // Crear producto
+  // =========================
+
+  const createdProduct = await tx.product.create({
       data: {
         company: {
           connect: {
@@ -230,17 +243,168 @@ export const createProduct = async (req, res) => {
         minStock,
         maxStock,
         reorderPoint
+      }
+    });
+
+    // ======================================
+    // Crear BOM (si fue enviado)
+    // ======================================
+
+    if (bom) {
+
+      // ======================================
+// Crear BOM (si fue enviado)
+// ======================================
+
+if (bom) {
+      const createdBom = await tx.productBom.create({
+        data: {
+
+          company: {
+            connect: {
+              id: req.user.companyId
+            }
+          },
+
+          product: {
+            connect: {
+              id: createdProduct.id
+            }
+          },
+
+          version: 1,
+
+          name: bom.name?.trim() || null,
+
+          description: bom.description?.trim() || null,
+
+          isActive: true
+
+        }
+      });
+
+      // ======================================
+      // Crear Items del BOM
+      // ======================================
+
+      if (Array.isArray(bom.items) && bom.items.length > 0) {
+
+            for (const item of bom.items) {
+
+              // ==========================
+              // Validar material
+              // ==========================
+
+              const material = await tx.product.findFirst({
+                where: {
+                  id: item.materialId,
+                  companyId: req.user.companyId
+                }
+              });
+
+              if (!material) {
+                throw new Error(`El material ${item.materialId} no existe.`);
+              }
+
+              if (material.productType === "SERVICE") {
+                throw new Error(`${material.name} es un servicio y no puede utilizarse como materia prima.`);
+              }
+
+              // ==========================
+              // Crear Item
+              // ==========================
+
+              await tx.productBomItem.create({
+                data: {
+
+                  bom: {
+                    connect: {
+                      id: createdBom.id
+                    }
+                  },
+
+                  material: {
+                    connect: {
+                      id: item.materialId
+                    }
+                  },
+
+                  quantity: item.quantity,
+
+                  wastePercent: item.wastePercent ?? 0,
+
+                  notes: item.notes?.trim() || null
+
+                }
+              });
+
+            }
+
+          }
+
+    }
+
+  }
+
+   // ======================================
+// Retornar producto completo
+// ======================================
+
+  return await tx.product.findUnique({
+      where: {
+        id: createdProduct.id
       },
 
       include: {
-          category: {
-              select: {
-                  id: true,
-                  name: true
-              }
+
+        category: {
+          select: {
+            id: true,
+            name: true
           }
+        },
+
+        bom: {
+          where: {
+            isActive: true
+          },
+
+          include: {
+
+            items: {
+
+              include: {
+
+                material: {
+
+                  select: {
+                    id: true,
+                    code: true,
+                    barcode: true,
+                    name: true,
+                    unit: true,
+                    productType: true
+                  }
+
+                }
+
+              },
+
+              orderBy: {
+                createdAt: "asc"
+              }
+
+            }
+
+          }
+
+        }
+
       }
+
     });
+
+  });
 
     res.status(201).json({
       message: "Producto creado correctamente.",
