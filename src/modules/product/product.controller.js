@@ -201,87 +201,87 @@ let {
     }
 
     // =========================
-// Crear producto + BOM
-// =========================
+    // Crear producto + BOM
+    // =========================
 
-const product = await prisma.$transaction(async (tx) => {
+    const product = await prisma.$transaction(async (tx) => {
 
-  // =========================
-  // Crear producto
-  // =========================
+      // =========================
+      // Crear producto
+      // =========================
 
-  const createdProduct = await tx.product.create({
-      data: {
-        company: {
-          connect: {
-            id: req.user.companyId
+      const createdProduct = await tx.product.create({
+          data: {
+            company: {
+              connect: {
+                id: req.user.companyId
+              }
+            },
+
+            category: {
+              connect: {
+                id: productCategoryId
+              }
+            },
+
+            code,
+            barcode,
+            name,
+            description,
+            imageUrl,
+
+            productType,
+            sourceType,
+
+            unit,
+
+            currentStock: 0,
+            costPrice: costPrice ?? 0,
+
+            salePrice,
+
+            minStock,
+            maxStock,
+            reorderPoint
           }
-        },
+        });
 
-        category: {
-          connect: {
-            id: productCategoryId
-          }
-        },
+        // ======================================
+        // Crear BOM (si fue enviado)
+        // ======================================
 
-        code,
-        barcode,
-        name,
-        description,
-        imageUrl,
+        if (bom) {
 
-        productType,
-        sourceType,
-
-        unit,
-
-        currentStock: 0,
-        costPrice: costPrice ?? 0,
-
-        salePrice,
-
-        minStock,
-        maxStock,
-        reorderPoint
-      }
-    });
-
-    // ======================================
+          // ======================================
     // Crear BOM (si fue enviado)
     // ======================================
 
     if (bom) {
+          const createdBom = await tx.productBom.create({
+            data: {
 
-      // ======================================
-// Crear BOM (si fue enviado)
-// ======================================
+              company: {
+                connect: {
+                  id: req.user.companyId
+                }
+              },
 
-if (bom) {
-      const createdBom = await tx.productBom.create({
-        data: {
+              product: {
+                connect: {
+                  id: createdProduct.id
+                }
+              },
 
-          company: {
-            connect: {
-              id: req.user.companyId
+              version: 1,
+
+              name: bom.name?.trim() || null,
+
+              description: bom.description?.trim() || null,
+
+              isActive: true
+
             }
-          },
-
-          product: {
-            connect: {
-              id: createdProduct.id
-            }
-          },
-
-          version: 1,
-
-          name: bom.name?.trim() || null,
-
-          description: bom.description?.trim() || null,
-
-          isActive: true
-
-        }
-      });
+          });
 
       // ======================================
       // Crear Items del BOM
