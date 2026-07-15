@@ -511,6 +511,7 @@ export const getProducts = async (req, res) => {
 // 🔍 OBTENER PRODUCTO
 // =========================
 export const getProductById = async (req, res) => {
+  console.log('getProductById called with params:');
   const { id } = req.params;
 
   try {
@@ -523,10 +524,34 @@ export const getProductById = async (req, res) => {
 
       include: {
         category: {
-          select: {
-            id: true,
-            code: true,
-            name: true
+            select: {
+                id: true,
+                name: true
+            }
+        },
+
+        bom: {
+          where: {
+            isActive: true
+          },
+          orderBy: {
+            version: "desc"
+          },
+          include: {
+            items: {
+              include: {
+                material: {
+                  select: {
+                    id: true,
+                    code: true,
+                    barcode: true,
+                    name: true,
+                    unit: true,
+                    costPrice: true
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -557,23 +582,46 @@ export const getProductById = async (req, res) => {
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
 
+  // =========================
+// Payload
+// =========================
+
+  const {
+    product = {},
+    bom = {}
+  } = req.body;
+
   let {
     code,
     barcode,
     name,
     description,
     imageUrl,
+
     productType,
     sourceType,
+
     unit,
+
     salePrice,
+
     minStock,
     maxStock,
     reorderPoint,
-    productCategoryId,
-    isActive
-  } = req.body;
 
+    productCategoryId,
+
+    isActive
+  } = product;
+
+  // =========================
+  // BOM
+  // =========================
+
+  const {
+    indirectCostPercent = 0,
+    items = []
+  } = bom;
   try {
     // =========================
     // Verificar existencia
@@ -685,28 +733,56 @@ export const updateProduct = async (req, res) => {
         message: "El stock máximo no puede ser menor al stock mínimo."
       });
     }
-
     // =========================
-    // Validaciones de negocio
+    // Validaciones BOM
     // =========================
 
-    if (
-      productType === "SERVICE" &&
-      sourceType !== "SERVICE"
-    ) {
-      return res.status(400).json({
-        message: "Un servicio solo puede tener sourceType SERVICE."
-      });
+    if (sourceType === "PRODUCTION") {
+
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          message: "Los productos de producción deben tener al menos una materia prima."
+        });
+      }
+
     }
 
-    if (
-      productType === "INVENTORY" &&
-      sourceType === "SERVICE"
-    ) {
-      return res.status(400).json({
-        message: "Un producto de inventario no puede tener sourceType SERVICE."
-      });
+    if (sourceType === "PURCHASE") {
+
+      // No requiere BOM
+
     }
+
+    if (productType === "SERVICE") {
+
+      if (items.length > 0) {
+        return res.status(400).json({
+          message: "Los servicios no pueden tener una receta (BOM)."
+        });
+      }
+
+    }
+
+    // =========================
+    // Validar materiales duplicados
+    // =========================
+
+    if (items.length > 0) {
+
+      const materialIds = items.map(item => item.materialId);
+
+      const duplicated = materialIds.find(
+        (id, index) => materialIds.indexOf(id) !== index
+      );
+
+      if (duplicated) {
+        return res.status(400).json({
+          message: "La receta contiene materias primas duplicadas."
+        });
+      }
+
+    }
+    
 
     // =========================
     // Código único
@@ -771,7 +847,17 @@ export const updateProduct = async (req, res) => {
     // Actualizar
     // =========================
 
-    const product = await prisma.product.update({
+    // =========================
+// Actualizar (Product + BOM)
+// =========================
+
+const product = await prisma.$transaction(async (tx) => {
+
+  // =========================
+  // Actualizar Producto
+  // =========================
+
+  const updatedProduct = await tx.product.update({
       where: {
         id
       },
@@ -801,17 +887,158 @@ export const updateProduct = async (req, res) => {
             id: productCategoryId
           }
         }
+      }
+    });
+
+    // =========================
+    // Productos de Producción
+    // =========================
+
+   if (sourceType === "PRODUCTION" || sourceType === "BOTH") {
+
+      let productBom = await tx.productBom.findFirst({
+        where: {
+          productId: updatedProduct.id,
+          isActive: true
+        }
+      });
+
+      if (!productBom) {
+
+        productBom = await tx.productBom.create({
+          data: {
+            companyId: req.user.companyId,
+            productId: updatedProduct.id,
+            version: 1,
+            name: updatedProduct.name,
+            description: updatedProduct.description,
+            isActive: true
+          }
+        });
+
+      } else {
+
+        productBom = await tx.productBom.update({
+          where: {
+            id: productBom.id
+          },
+
+          data: {
+            name: updatedProduct.name,
+            description: updatedProduct.description
+          }
+        });
+
+      }
+
+      // =========================
+      // Eliminar Items anteriores
+      // =========================
+
+      await tx.productBomItem.deleteMany({
+        where: {
+          bomId: productBom.id
+        }
+      });
+
+      // =========================
+      // Crear nuevos Items
+      // =========================
+
+      if (items.length > 0) {
+
+        await tx.productBomItem.createMany({
+          data: items.map(item => ({
+            bomId: productBom.id,
+            materialId: item.materialId,
+            quantity: item.quantity,
+            wastePercent: item.wastePercent ?? 0,
+            notes: item.notes ?? null
+          }))
+        });
+
+      }
+
+    }
+
+    // =========================
+    // Productos sin Producción
+    // =========================
+
+    else if (sourceType === "PURCHASE") {
+
+      const productBom = await tx.productBom.findFirst({
+        where: {
+          productId: updatedProduct.id,
+          isActive: true
+        }
+      });
+
+      if (productBom) {
+
+        await tx.productBomItem.deleteMany({
+          where: {
+            bomId: productBom.id
+          }
+        });
+
+      }
+
+    }
+
+    // =========================
+    // Retornar Producto completo
+    // =========================
+
+    return await tx.product.findUnique({
+      where: {
+        id: updatedProduct.id
       },
 
       include: {
-          category: {
-              select: {
-                  id: true,
-                  name: true
-              }
+
+        category: {
+          select: {
+            id: true,
+            name: true
           }
+        },
+
+        bom: {
+          where: {
+            isActive: true
+          },
+
+          include: {
+
+            items: {
+
+              include: {
+
+                material: {
+                  select: {
+                    id: true,
+                    code: true,
+                    barcode: true,
+                    name: true,
+                    unit: true,
+                    costPrice: true
+                  }
+                }
+
+              }
+
+            }
+
+          }
+
+        }
+
       }
+
     });
+
+  });
 
     res.json({
       message: "Producto actualizado correctamente.",

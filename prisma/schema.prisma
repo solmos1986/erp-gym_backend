@@ -474,7 +474,132 @@ model ProductBomItem {
   @@index([bomId])
   @@index([materialId])
 }
+model ProductionOrder {
+  id String @id @default(uuid())
 
+  // Multiempresa
+  companyId String
+  branchId  String?
+
+  // Numeración
+  number Int
+
+  // Origen del documento
+  originType ProductionOriginType @default(MANUAL)
+  originId   String?
+
+  // Estado general
+  status ProductionStatus @default(PENDING)
+
+  // Información
+  notes String?
+
+  // Auditoría
+  requestedById String
+  startedById   String?
+  finishedById  String?
+
+  requestedAt DateTime @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
+
+  requestedBy User @relation("ProductionRequestedBy", fields: [requestedById], references: [id])
+  startedBy   User? @relation("ProductionStartedBy", fields: [startedById], references: [id])
+  finishedBy  User? @relation("ProductionFinishedBy", fields: [finishedById], references: [id])
+
+  items ProductionOrderItem[]
+
+  @@unique([companyId, number])
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([status])
+  @@index([originType])
+}
+enum ProductionOriginType {
+  MANUAL
+  SALE
+}
+enum ProductionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+model ProductionOrderItem {
+  id String @id @default(uuid())
+
+  productionOrderId String
+
+  productId String
+
+  quantity Decimal @db.Decimal(18,4)
+
+  unitCost Decimal @default(0) @db.Decimal(18,4)
+
+  totalCost Decimal @default(0) @db.Decimal(18,2)
+
+  status ProductionItemStatus @default(PENDING)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  productionOrder ProductionOrder
+      @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+
+  product Product
+      @relation(fields: [productId], references: [id])
+
+  consumptions ProductionConsumption[]
+
+  @@index([productionOrderId])
+
+  @@index([productId])
+
+  @@index([status])
+}
+enum ProductionItemStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+model ProductionConsumption {
+  id String @id @default(uuid())
+
+  // Relación
+  productionOrderItemId String
+
+  // Materia Prima utilizada
+  materialId String
+
+  // Cantidades calculadas
+  quantity Decimal @db.Decimal(18,4)
+
+  // Costos al momento de producir
+  unitCost Decimal @db.Decimal(18,4)
+  totalCost Decimal @db.Decimal(18,2)
+
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  productionOrderItem ProductionOrderItem
+    @relation(fields: [productionOrderItemId], references: [id], onDelete: Cascade)
+
+  material Product
+    @relation(fields: [materialId], references: [id])
+
+  @@index([productionOrderItemId])
+  @@index([materialId])
+}
 model InventoryMovement {
   id String @id @default(uuid())
 
@@ -644,6 +769,8 @@ model Sale {
   updatedAt     DateTime  @updatedAt
   cancelledById String?
   cancelledAt   DateTime?
+
+  fulfillmentStatus FulfillmentStatus @default(PENDING)
 
   company  Company  @relation(fields: [companyId], references: [id])
   branch   Branch?  @relation(fields: [branchId], references: [id])
@@ -861,7 +988,12 @@ enum PurchaseStatus {
   CONFIRMED
   CANCELLED
 }
-
+enum FulfillmentStatus {
+  PENDING
+  IN_PROGRESS
+  READY
+  DELIVERED
+}
 enum SaleItemType {
   MEMBERSHIP_PLAN
   PRODUCT
