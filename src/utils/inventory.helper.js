@@ -1,33 +1,72 @@
-export const calculateStock = async (tx, companyId, productId) => {
-  const movements = await tx.inventoryMovement.findMany({
-    where: {
-      companyId,
-      productId
+import { Prisma } from "@prisma/client";
+
+export async function calculateStock(
+    tx,
+    companyId,
+    branchId,
+    productId,
+    movementType,
+    quantity
+) {
+    let productBranch = await tx.productBranch.findUnique({
+        where: {
+            branchId_productId: {
+                branchId,
+                productId
+            }
+        }
+    });
+
+    if (!productBranch) {
+        productBranch = await tx.productBranch.create({
+            data: {
+                companyId,
+                branchId,
+                productId,
+                currentStock: 0,
+                costPrice: 0,
+                salePrice: 0
+            }
+        });
     }
-  });
 
-  let stock = 0;
+    let stock = Number(productBranch.currentStock);
+    const qty = Number(quantity);
 
-  for (const movement of movements) {
-    switch (movement.movementType) {
-      case "INITIAL_STOCK":
-      case "PURCHASE":
-      case "ADJUSTMENT_IN":
-      case "TRANSFER_IN":
-      case "SALE_CANCEL":
-        stock += Number(movement.quantity);
-        break;
+    switch (movementType) {
 
-      case "SALE":
-      case "ADJUSTMENT_OUT":
-      case "TRANSFER_OUT":
-        stock -= Number(movement.quantity);
-        break;
+        case "INITIAL_STOCK":
+        case "PURCHASE":
+        case "PRODUCTION_IN":
+        case "TRANSFER_IN":
+        case "ADJUSTMENT_IN":
+        case "SALE_CANCEL":
+            stock += qty;
+            break;
+
+        case "PURCHASE_CANCEL":
+        case "SALE":
+        case "PRODUCTION_OUT":
+        case "TRANSFER_OUT":
+        case "ADJUSTMENT_OUT":
+            stock -= qty;
+            break;
+
+        default:
+            throw new Error(`Tipo de movimiento no soportado: ${movementType}`);
     }
-  }
 
-  return stock;
-};
+    await tx.productBranch.update({
+        where: {
+            id: productBranch.id
+        },
+        data: {
+            currentStock: stock
+        }
+    });
+
+    return stock;
+}
 
 export const getStockMap = async (tx, companyId, branchId = null) => {
   const movements = await tx.inventoryMovement.findMany({
@@ -51,18 +90,20 @@ export const getStockMap = async (tx, companyId, branchId = null) => {
     let qty = Number(movement.quantity);
 
     switch (movement.movementType) {
-      case "INITIAL_STOCK":
       case "PURCHASE":
       case "ADJUSTMENT_IN":
       case "TRANSFER_IN":
       case "SALE_CANCEL":
-        stockMap.set(movement.productId, current + qty);
+      case "PRODUCTION_IN":
+        stock += Number(movement.quantity);
         break;
 
       case "SALE":
       case "ADJUSTMENT_OUT":
       case "TRANSFER_OUT":
-        stockMap.set(movement.productId, current - qty);
+      case "PRODUCTION_OUT":
+      case "PURCHASE_CANCEL":
+        stock -= Number(movement.quantity);
         break;
     }
   }

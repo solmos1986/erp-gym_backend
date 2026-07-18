@@ -1,11 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { applyTenantFilter } from "../../utils/tenant.util.js";
+import { calculateStock } from "../../utils/inventory.helper.js";
 
-const prisma = new PrismaClient();
-
-// =========================
-// ➕ CREAR MOVIMIENTO
-// =========================
 export const createInventoryMovement = async (req, res) => {
   const { productId, movementType, quantity, notes } = req.body;
 
@@ -58,10 +54,13 @@ export const createInventoryMovement = async (req, res) => {
     // =========================
     // CREAR MOVIMIENTO
     // =========================
+
     const movement = await prisma.inventoryMovement.create({
       data: {
         movementType,
         quantity,
+        unitCost: 0,
+        totalCost: 0,
         notes,
 
         companyId: req.user.companyId,
@@ -97,10 +96,24 @@ export const createInventoryMovement = async (req, res) => {
       }
     });
 
+    // =========================
+    // ACTUALIZAR STOCK
+    // =========================
+
+    await calculateStock(
+      prisma,
+      req.user.companyId,
+      req.user.branchId,
+      productId,
+      movementType,
+      quantity
+    );
+
     return res.status(201).json({
       message: "Movimiento registrado correctamente",
       movement
     });
+
   } catch (error) {
     console.error("Error creando movimiento:", error);
 
@@ -273,6 +286,7 @@ export const getStockByBranch = async (req, res) => {
         case "SALE":
         case "ADJUSTMENT_OUT":
         case "TRANSFER_OUT":
+          case "PURCHASE_CANCEL":
           item.stock -= Number(movement.quantity);
           break;
       }

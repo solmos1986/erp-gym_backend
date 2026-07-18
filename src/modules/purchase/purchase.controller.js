@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { createPurchase as createPurchaseService } from "./purchase.service.js";
+import { calculateStock } from '../../utils/inventory.helper.js';
+import { calculateCost } from '../../utils/inventory-cost.helper.js';
 const prisma = new PrismaClient();
 // =========================
 // 🛒 CREAR COMPRA
@@ -275,7 +277,9 @@ export const cancelPurchase = async (req, res, next) => {
       // 🔒 CAJA CERRADA
       // =========================
 
-      const hasClosedRegister = cashMovements.some((movement) => movement.cashRegister?.status === "CLOSED");
+      const hasClosedRegister = cashMovements.some(
+        (movement) => movement.cashRegister?.status === "CLOSED"
+      );
 
       if (hasClosedRegister) {
         throw new Error("No se puede anular una compra perteneciente a una caja cerrada");
@@ -328,7 +332,7 @@ export const cancelPurchase = async (req, res, next) => {
 
             productId: detail.productId,
 
-            movementType: "ADJUSTMENT_OUT",
+            movementType: "PURCHASE_CANCEL",
 
             quantity: detail.quantity,
 
@@ -337,6 +341,22 @@ export const cancelPurchase = async (req, res, next) => {
             createdById: userId
           }
         });
+
+        await calculateStock(
+          tx,
+          companyId,
+          purchase.branchId,
+          detail.productId,
+          "PURCHASE_CANCEL",
+          detail.quantity
+        );
+
+        await calculateCost(
+          tx,
+          companyId,
+          purchase.branchId,
+          detail.productId
+        );
       }
 
       return purchase;

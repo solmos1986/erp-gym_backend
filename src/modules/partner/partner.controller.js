@@ -154,8 +154,7 @@ export const createPartner = async (req, res) => {
         throw new Error("Empresa no encontrada");
       }
 
-      const requiresDocument =
-        company.businessTemplate?.code === "GYM";
+      const requiresDocument = company.businessTemplate?.code === "GYM";
 
       // 🧼 SANITIZAR CAMPOS
       const cleanDocument = document?.trim() || null;
@@ -219,12 +218,13 @@ export const createPartner = async (req, res) => {
       partner: result
     });
   } catch (error) {
-  console.error(error);
+    console.error(error);
 
-  res.status(400).json({
-    message: error.message,
-    stack: error.stack
-  });}
+    res.status(400).json({
+      message: error.message,
+      stack: error.stack
+    });
+  }
 };
 // =========================
 // 📋 LISTAR PARTNERS

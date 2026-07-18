@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { createCashMovementPayments } from "../../utils/payment.helper.js";
+import { calculateStock } from '../../utils/inventory.helper.js';
+import { calculateCost } from '../../utils/inventory-cost.helper.js';
 
 const prisma = new PrismaClient();
 
@@ -169,36 +171,57 @@ export const createPurchase = async ({ supplierId, companyId, branchId, userId, 
           total: lineTotal
         }
       });
+      // =========================
+      // 📦 MOVIMIENTO INVENTARIO
+      // =========================
 
-      // Actualizar último costo
-      await tx.product.update({
-        where: {
-          id: product.id
-        },
-        data: {
-          costPrice: item.unitCost
-        }
+      await tx.inventoryMovement.create({
+          data: {
+              companyId,
+              branchId,
+
+              productId: product.id,
+
+              movementType: "PURCHASE",
+
+              referenceType: "PURCHASE",
+              referenceId: purchase.id,
+
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+              totalCost: Number(item.quantity) * Number(item.unitCost),
+
+              notes: `Compra #${nextPurchaseNumber}`,
+
+              createdById: userId
+          }
       });
 
-      // Movimiento inventario
-      await tx.inventoryMovement.create({
-        data: {
+      // =========================
+      // 💰 ACTUALIZAR COSTO
+      // =========================
+
+      await calculateCost(
+          tx,
           companyId,
           branchId,
+          product.id,
+          item.quantity,
+          item.unitCost
+      );
 
-          productId: product.id,
+      // =========================
+      // 📈 ACTUALIZAR STOCK
+      // =========================
 
-          movementType: "PURCHASE",
-
-          quantity: item.quantity,
-
-          notes: `Compra #${nextPurchaseNumber}`,
-
-          createdById: userId
-        }
-      });
-    }
-
+      await calculateStock(
+          tx,
+          companyId,
+          branchId,
+          product.id,
+          "PURCHASE",
+          item.quantity
+      )};
     // =========================
     // 💸 MOVIMIENTO CAJA
     // =========================

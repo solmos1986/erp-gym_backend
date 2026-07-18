@@ -7,28 +7,28 @@ const prisma = new PrismaClient();
 // =========================
 export const createProduct = async (req, res) => {
   // =========================
-// Datos recibidos
-// =========================
+  // Datos recibidos
+  // =========================
 
-const productData = req.body.product ?? req.body;
-const bom = req.body.bom ?? null;
+  const productData = req.body.product ?? req.body;
+  const bom = req.body.bom ?? null;
 
-let {
-  code,
-  barcode,
-  name,
-  description,
-  imageUrl,
-  productType,
-  sourceType,
-  unit,
-  costPrice,
-  salePrice,
-  minStock,
-  maxStock,
-  reorderPoint,
-  productCategoryId
-} = productData;
+  let {
+    code,
+    barcode,
+    name,
+    description,
+    imageUrl,
+    productType,
+    sourceType,
+    unit,
+    costPrice,
+    salePrice,
+    minStock,
+    maxStock,
+    reorderPoint,
+    productCategoryId
+  } = productData;
 
   try {
     // =========================
@@ -115,11 +115,7 @@ let {
       });
     }
 
-    if (
-      minStock !== undefined &&
-      maxStock !== undefined &&
-      Number(maxStock) < Number(minStock)
-    ) {
+    if (minStock !== undefined && maxStock !== undefined && Number(maxStock) < Number(minStock)) {
       return res.status(400).json({
         message: "El stock máximo no puede ser menor al stock mínimo."
       });
@@ -129,19 +125,13 @@ let {
     // Validaciones de negocio
     // =========================
 
-    if (
-      productType === "RAW_MATERIAL" &&
-      sourceType !== "PURCHASE"
-    ) {
+    if (productType === "RAW_MATERIAL" && sourceType !== "PURCHASE") {
       return res.status(400).json({
         message: "Una materia prima solo puede tener origen PURCHASE."
       });
     }
 
-    if (
-      productType === "SERVICE" &&
-      sourceType === "PRODUCTION"
-    ) {
+    if (productType === "SERVICE" && sourceType === "PRODUCTION") {
       return res.status(400).json({
         message: "Un servicio no puede producirse."
       });
@@ -205,61 +195,70 @@ let {
     // =========================
 
     const product = await prisma.$transaction(async (tx) => {
-
       // =========================
       // Crear producto
       // =========================
 
       const createdProduct = await tx.product.create({
           data: {
-            company: {
-              connect: {
-                id: req.user.companyId
-              }
-            },
+              company: {
+                  connect: {
+                      id: req.user.companyId
+                  }
+              },
 
-            category: {
-              connect: {
-                id: productCategoryId
-              }
-            },
+              category: {
+                  connect: {
+                      id: productCategoryId
+                  }
+              },
 
-            code,
-            barcode,
-            name,
-            description,
-            imageUrl,
+              code,
+              barcode,
+              name,
+              description,
+              imageUrl,
 
-            productType,
-            sourceType,
+              productType,
+              sourceType,
 
-            unit,
-
-            currentStock: 0,
-            costPrice: costPrice ?? 0,
-
-            salePrice,
-
-            minStock,
-            maxStock,
-            reorderPoint
+              unit
           }
-        });
+      });
+      // ======================================
+      // Crear ProductBranch
+      // ======================================
 
+      await tx.productBranch.create({
+          data: {
+              companyId: req.user.companyId,
+              branchId: req.user.branchId,
+
+              productId: createdProduct.id,
+
+              currentStock: 0,
+
+              costPrice: costPrice ?? 0,
+              salePrice: salePrice ?? 0,
+
+              minStock: minStock ?? 0,
+              maxStock: maxStock ?? 0,
+              reorderPoint: reorderPoint ?? 0
+          }
+      });
+
+      // ======================================
+      // Crear BOM (si fue enviado)
+      // ======================================
+
+      if (bom) {
         // ======================================
         // Crear BOM (si fue enviado)
         // ======================================
 
         if (bom) {
-
-          // ======================================
-    // Crear BOM (si fue enviado)
-    // ======================================
-
-    if (bom) {
           const createdBom = await tx.productBom.create({
             data: {
-
               company: {
                 connect: {
                   id: req.user.companyId
@@ -279,18 +278,15 @@ let {
               description: bom.description?.trim() || null,
 
               isActive: true
-
             }
           });
 
-      // ======================================
-      // Crear Items del BOM
-      // ======================================
+          // ======================================
+          // Crear Items del BOM
+          // ======================================
 
-      if (Array.isArray(bom.items) && bom.items.length > 0) {
-
+          if (Array.isArray(bom.items) && bom.items.length > 0) {
             for (const item of bom.items) {
-
               // ==========================
               // Validar material
               // ==========================
@@ -316,7 +312,6 @@ let {
 
               await tx.productBomItem.create({
                 data: {
-
                   bom: {
                     connect: {
                       id: createdBom.id
@@ -334,105 +329,78 @@ let {
                   wastePercent: item.wastePercent ?? 0,
 
                   notes: item.notes?.trim() || null
-
                 }
               });
-
             }
-
           }
-
-    }
-
-  }
-
-   // ======================================
-// Retornar producto completo
-// ======================================
-
-  return await tx.product.findUnique({
-      where: {
-        id: createdProduct.id
-      },
-
-      include: {
-
-        category: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-
-        bom: {
-          where: {
-            isActive: true
-          },
-
-          include: {
-
-            items: {
-
-              include: {
-
-                material: {
-
-                  select: {
-                    id: true,
-                    code: true,
-                    barcode: true,
-                    name: true,
-                    unit: true,
-                    productType: true
-                  }
-
-                }
-
-              },
-
-              orderBy: {
-                createdAt: "asc"
-              }
-
-            }
-
-          }
-
         }
-
       }
 
-    });
+      // ======================================
+      // Retornar producto completo
+      // ======================================
 
-  });
+      return await tx.product.findUnique({
+        where: {
+          id: createdProduct.id
+        },
+
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+
+          bom: {
+            where: {
+              isActive: true
+            },
+
+            include: {
+              items: {
+                include: {
+                  material: {
+                    select: {
+                      id: true,
+                      code: true,
+                      barcode: true,
+                      name: true,
+                      unit: true,
+                      productType: true
+                    }
+                  }
+                },
+
+                orderBy: {
+                  createdAt: "asc"
+                }
+              }
+            }
+          }
+        }
+      });
+    });
 
     res.status(201).json({
       message: "Producto creado correctamente.",
       product
     });
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
       message: error.message,
       code: error.code
     });
-
   }
 };
 // =========================
-// 📋 LISTAR PRODUCTOS
+// 📋 OBTENER PRODUCTOS
 // =========================
 export const getProducts = async (req, res) => {
-  const {
-    isActive,
-    productType,
-    sourceType,
-    productCategoryId,
-    search
-  } = req.query;
+  const { isActive, productType, sourceType, productCategoryId, search } = req.query;
 
   try {
     const products = await prisma.product.findMany({
@@ -485,6 +453,20 @@ export const getProducts = async (req, res) => {
             id: true,
             name: true
           }
+        },
+
+        productBranches: {
+          where: {
+            branchId: req.user.branchId
+          },
+          select: {
+            currentStock: true,
+            costPrice: true,
+            salePrice: true,
+            minStock: true,
+            maxStock: true,
+            reorderPoint: true
+          }
         }
       },
 
@@ -494,16 +476,13 @@ export const getProducts = async (req, res) => {
     });
 
     res.json(products);
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
       message: "Error obteniendo productos",
       error: error.message
     });
-
   }
 };
 
@@ -511,11 +490,9 @@ export const getProducts = async (req, res) => {
 // 🔍 OBTENER PRODUCTO
 // =========================
 export const getProductById = async (req, res) => {
-  console.log('getProductById called with params:');
   const { id } = req.params;
 
   try {
-
     const product = await prisma.product.findFirst({
       where: {
         id,
@@ -524,30 +501,49 @@ export const getProductById = async (req, res) => {
 
       include: {
         category: {
-            select: {
-                id: true,
-                name: true
-            }
+          select: {
+            id: true,
+            name: true
+          }
+        },
+
+        productBranches: {
+          where: {
+            branchId: req.user.branchId
+          },
+          select: {
+            currentStock: true,
+            costPrice: true,
+            salePrice: true,
+            minStock: true,
+            maxStock: true,
+            reorderPoint: true
+          }
         },
 
         bom: {
           where: {
             isActive: true
           },
+
           orderBy: {
             version: "desc"
           },
+
           include: {
             items: {
               include: {
                 material: {
-                  select: {
-                    id: true,
-                    code: true,
-                    barcode: true,
-                    name: true,
-                    unit: true,
-                    costPrice: true
+                  include: {
+                    productBranches: {
+                      where: {
+                        branchId: req.user.branchId
+                      },
+                      select: {
+                        currentStock: true,
+                        costPrice: true
+                      }
+                    }
                   }
                 }
               }
@@ -566,13 +562,11 @@ export const getProductById = async (req, res) => {
     res.json(product);
 
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
       message: "Error obteniendo producto"
     });
-
   }
 };
 
@@ -583,13 +577,10 @@ export const updateProduct = async (req, res) => {
   const { id } = req.params;
 
   // =========================
-// Payload
-// =========================
+  // Payload
+  // =========================
 
-  const {
-    product = {},
-    bom = {}
-  } = req.body;
+  const { product = {}, bom = {} } = req.body;
 
   let {
     code,
@@ -618,10 +609,7 @@ export const updateProduct = async (req, res) => {
   // BOM
   // =========================
 
-  const {
-    indirectCostPercent = 0,
-    items = []
-  } = bom;
+  const { indirectCostPercent = 0, items = [] } = bom;
   try {
     // =========================
     // Verificar existencia
@@ -724,11 +712,7 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    if (
-      minStock !== undefined &&
-      maxStock !== undefined &&
-      Number(maxStock) < Number(minStock)
-    ) {
+    if (minStock !== undefined && maxStock !== undefined && Number(maxStock) < Number(minStock)) {
       return res.status(400).json({
         message: "El stock máximo no puede ser menor al stock mínimo."
       });
@@ -738,29 +722,23 @@ export const updateProduct = async (req, res) => {
     // =========================
 
     if (sourceType === "PRODUCTION") {
-
       if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({
           message: "Los productos de producción deben tener al menos una materia prima."
         });
       }
-
     }
 
     if (sourceType === "PURCHASE") {
-
       // No requiere BOM
-
     }
 
     if (productType === "SERVICE") {
-
       if (items.length > 0) {
         return res.status(400).json({
           message: "Los servicios no pueden tener una receta (BOM)."
         });
       }
-
     }
 
     // =========================
@@ -768,21 +746,16 @@ export const updateProduct = async (req, res) => {
     // =========================
 
     if (items.length > 0) {
+      const materialIds = items.map((item) => item.materialId);
 
-      const materialIds = items.map(item => item.materialId);
-
-      const duplicated = materialIds.find(
-        (id, index) => materialIds.indexOf(id) !== index
-      );
+      const duplicated = materialIds.find((id, index) => materialIds.indexOf(id) !== index);
 
       if (duplicated) {
         return res.status(400).json({
           message: "La receta contiene materias primas duplicadas."
         });
       }
-
     }
-    
 
     // =========================
     // Código único
@@ -848,133 +821,86 @@ export const updateProduct = async (req, res) => {
     // =========================
 
     // =========================
-// Actualizar (Product + BOM)
-// =========================
-
-const product = await prisma.$transaction(async (tx) => {
-
-  // =========================
-  // Actualizar Producto
-  // =========================
-
-  const updatedProduct = await tx.product.update({
-      where: {
-        id
-      },
-
-      data: {
-        code,
-        barcode,
-        name,
-        description,
-        imageUrl,
-
-        productType,
-        sourceType,
-
-        unit,
-
-        salePrice,
-
-        minStock,
-        maxStock,
-        reorderPoint,
-
-        isActive,
-
-        category: {
-          connect: {
-            id: productCategoryId
-          }
-        }
-      }
-    });
-
-    // =========================
-    // Productos de Producción
+    // Actualizar (Product + BOM)
     // =========================
 
-   if (sourceType === "PRODUCTION" || sourceType === "BOTH") {
+    const product = await prisma.$transaction(async (tx) => {
+      // =========================
+      // Actualizar Producto
+      // =========================
 
-      let productBom = await tx.productBom.findFirst({
+      const updatedProduct = await tx.product.update({
         where: {
-          productId: updatedProduct.id,
-          isActive: true
+          id
+        },
+
+        data: {
+          code,
+          barcode,
+          name,
+          description,
+          imageUrl,
+
+          productType,
+          sourceType,
+
+          unit,
+
+          salePrice,
+
+          minStock,
+          maxStock,
+          reorderPoint,
+
+          isActive,
+
+          category: {
+            connect: {
+              id: productCategoryId
+            }
+          }
         }
       });
 
-      if (!productBom) {
+      // =========================
+      // Productos de Producción
+      // =========================
 
-        productBom = await tx.productBom.create({
-          data: {
-            companyId: req.user.companyId,
+      if (sourceType === "PRODUCTION" || sourceType === "BOTH") {
+        let productBom = await tx.productBom.findFirst({
+          where: {
             productId: updatedProduct.id,
-            version: 1,
-            name: updatedProduct.name,
-            description: updatedProduct.description,
             isActive: true
           }
         });
 
-      } else {
+        if (!productBom) {
+          productBom = await tx.productBom.create({
+            data: {
+              companyId: req.user.companyId,
+              productId: updatedProduct.id,
+              version: 1,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              isActive: true
+            }
+          });
+        } else {
+          productBom = await tx.productBom.update({
+            where: {
+              id: productBom.id
+            },
 
-        productBom = await tx.productBom.update({
-          where: {
-            id: productBom.id
-          },
-
-          data: {
-            name: updatedProduct.name,
-            description: updatedProduct.description
-          }
-        });
-
-      }
-
-      // =========================
-      // Eliminar Items anteriores
-      // =========================
-
-      await tx.productBomItem.deleteMany({
-        where: {
-          bomId: productBom.id
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description
+            }
+          });
         }
-      });
 
-      // =========================
-      // Crear nuevos Items
-      // =========================
-
-      if (items.length > 0) {
-
-        await tx.productBomItem.createMany({
-          data: items.map(item => ({
-            bomId: productBom.id,
-            materialId: item.materialId,
-            quantity: item.quantity,
-            wastePercent: item.wastePercent ?? 0,
-            notes: item.notes ?? null
-          }))
-        });
-
-      }
-
-    }
-
-    // =========================
-    // Productos sin Producción
-    // =========================
-
-    else if (sourceType === "PURCHASE") {
-
-      const productBom = await tx.productBom.findFirst({
-        where: {
-          productId: updatedProduct.id,
-          isActive: true
-        }
-      });
-
-      if (productBom) {
+        // =========================
+        // Eliminar Items anteriores
+        // =========================
 
         await tx.productBomItem.deleteMany({
           where: {
@@ -982,78 +908,97 @@ const product = await prisma.$transaction(async (tx) => {
           }
         });
 
+        // =========================
+        // Crear nuevos Items
+        // =========================
+
+        if (items.length > 0) {
+          await tx.productBomItem.createMany({
+            data: items.map((item) => ({
+              bomId: productBom.id,
+              materialId: item.materialId,
+              quantity: item.quantity,
+              wastePercent: item.wastePercent ?? 0,
+              notes: item.notes ?? null
+            }))
+          });
+        }
       }
 
-    }
-
-    // =========================
-    // Retornar Producto completo
-    // =========================
-
-    return await tx.product.findUnique({
-      where: {
-        id: updatedProduct.id
-      },
-
-      include: {
-
-        category: {
-          select: {
-            id: true,
-            name: true
+      // =========================
+      // Productos sin Producción
+      // =========================
+      else if (sourceType === "PURCHASE") {
+        const productBom = await tx.productBom.findFirst({
+          where: {
+            productId: updatedProduct.id,
+            isActive: true
           }
+        });
+
+        if (productBom) {
+          await tx.productBomItem.deleteMany({
+            where: {
+              bomId: productBom.id
+            }
+          });
+        }
+      }
+
+      // =========================
+      // Retornar Producto completo
+      // =========================
+
+      return await tx.product.findUnique({
+        where: {
+          id: updatedProduct.id
         },
 
-        bom: {
-          where: {
-            isActive: true
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
           },
 
-          include: {
+          bom: {
+            where: {
+              isActive: true
+            },
 
-            items: {
-
-              include: {
-
-                material: {
-                  select: {
-                    id: true,
-                    code: true,
-                    barcode: true,
-                    name: true,
-                    unit: true,
-                    costPrice: true
+            include: {
+              items: {
+                include: {
+                  material: {
+                    select: {
+                      id: true,
+                      code: true,
+                      barcode: true,
+                      name: true,
+                      unit: true,
+                      costPrice: true
+                    }
                   }
                 }
-
               }
-
             }
-
           }
-
         }
-
-      }
-
+      });
     });
-
-  });
 
     res.json({
       message: "Producto actualizado correctamente.",
       product
     });
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
       message: error.message,
       code: error.code
     });
-
   }
 };
 // =========================
@@ -1063,7 +1008,6 @@ export const deleteProduct = async (req, res) => {
   const { id } = req.params;
 
   try {
-
     const product = await prisma.product.findFirst({
       where: {
         id,
@@ -1093,15 +1037,12 @@ export const deleteProduct = async (req, res) => {
     res.json({
       message: "Producto desactivado correctamente."
     });
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
       message: "Error desactivando producto"
     });
-
   }
 };
 
@@ -1112,7 +1053,6 @@ export const activateProduct = async (req, res) => {
   const { id } = req.params;
 
   try {
-
     const product = await prisma.product.findFirst({
       where: {
         id,
@@ -1139,14 +1079,11 @@ export const activateProduct = async (req, res) => {
     res.json({
       message: "Producto activado correctamente."
     });
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
       message: "Error activando producto"
     });
-
   }
 };

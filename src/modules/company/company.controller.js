@@ -46,7 +46,7 @@ const copyRoleTemplatesToCompany = async (tx, businessTemplateId, companyId) => 
 // =========================
 
 export const registerCompany = async (req, res) => {
-  const { name, email, password, businessTemplateId, logoUrl } = req.body;
+  const { name, email, password, businessTemplateId, logoUrl, costMethod } = req.body;
   try {
     const fullName = "OWNER";
     const result = await prisma.$transaction(async (tx) => {
@@ -89,7 +89,8 @@ export const registerCompany = async (req, res) => {
           name,
           logoUrl,
           isActive: true,
-          businessTemplateId
+          businessTemplateId,
+          costMethod: costMethod || "WEIGHTED_AVERAGE"
         }
       });
       const roles = await copyRoleTemplatesToCompany(tx, businessTemplateId, company.id);
@@ -246,6 +247,7 @@ export const getCompanies = async (req, res) => {
       name: c.name,
       isActive: c.isActive,
       logoUrl: c.logoUrl,
+      costMethod: c.costMethod,
       createdAt: c.createdAt,
       businessTemplate: c.businessTemplate,
       // 👤 owner limpio
@@ -302,7 +304,7 @@ export const updateCompany = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const { name, email, fullName, password, permissions, businessTemplateId } = req.body;
+    const { name, email, fullName, password, permissions, businessTemplateId, costMethod } = req.body;
 
     await prisma.$transaction(async (tx) => {
       // =========================
@@ -362,7 +364,6 @@ export const updateCompany = async (req, res) => {
       // 🏢 UPDATE COMPANY
       // =========================
       const companyData = {};
-
       if (name !== undefined) {
         companyData.name = name;
       }
@@ -370,7 +371,9 @@ export const updateCompany = async (req, res) => {
       if (businessTemplateId !== undefined) {
         companyData.businessTemplateId = businessTemplateId;
       }
-
+      if (costMethod !== undefined) {
+          companyData.costMethod = costMethod;
+      }
       if (Object.keys(companyData).length > 0) {
         await tx.company.update({
           where: { id },

@@ -335,6 +335,31 @@ async function main() {
       code: "TENANT_REPORT_VIEW",
       description: "Ver reportes",
       scope: "TENANT"
+    },
+    {
+      code: "TENANT_PRODUCTION_VIEW",
+      description: "Ver órdenes de producción",
+      scope: "TENANT"
+    },
+    {
+      code: "TENANT_PRODUCTION_CREATE",
+      description: "Crear órdenes de producción",
+      scope: "TENANT"
+    },
+    {
+      code: "TENANT_PRODUCTION_EDIT",
+      description: "Editar órdenes de producción",
+      scope: "TENANT"
+    },
+    {
+      code: "TENANT_PRODUCTION_DELETE",
+      description: "Cancelar órdenes de producción",
+      scope: "TENANT"
+    },
+    {
+      code: "TENANT_PRODUCTION_EXECUTE",
+      description: "Iniciar y finalizar órdenes de producción",
+      scope: "TENANT"
     }
   ];
 

@@ -29,6 +29,8 @@ import purchaseRoutes from "./modules/purchase/purchase.routes.js";
 import inventoryRoutes from "./modules/inventory/inventory.routes.js";
 import reportsRoutes from "./modules/report/reports.routes.js";
 import businessTemplateRoutes from "./modules/businessTemplate/businessTemplate.routes.js";
+import productionRoutes from "./modules/production/production.routes.js";
+
 const app = express();
 
 // =============================
@@ -113,6 +115,8 @@ app.use("/reports", reportsRoutes);
 
 // BUSINESS TEMPLATES
 app.use("/business-templates", businessTemplateRoutes);
+
+app.use("/production", productionRoutes);
 // =============================
 // 🧪 HEALTH CHECK
 // =============================
