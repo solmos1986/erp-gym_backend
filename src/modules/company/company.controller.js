@@ -372,7 +372,7 @@ export const updateCompany = async (req, res) => {
         companyData.businessTemplateId = businessTemplateId;
       }
       if (costMethod !== undefined) {
-          companyData.costMethod = costMethod;
+        companyData.costMethod = costMethod;
       }
       if (Object.keys(companyData).length > 0) {
         await tx.company.update({

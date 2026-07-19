@@ -22,7 +22,7 @@ export const createProduct = async (req, res) => {
     productType,
     sourceType,
     unit,
-    costPrice,
+    unitCost,
     salePrice,
     minStock,
     maxStock,
@@ -200,51 +200,51 @@ export const createProduct = async (req, res) => {
       // =========================
 
       const createdProduct = await tx.product.create({
-          data: {
-              company: {
-                  connect: {
-                      id: req.user.companyId
-                  }
-              },
+        data: {
+          company: {
+            connect: {
+              id: req.user.companyId
+            }
+          },
 
-              category: {
-                  connect: {
-                      id: productCategoryId
-                  }
-              },
+          category: {
+            connect: {
+              id: productCategoryId
+            }
+          },
 
-              code,
-              barcode,
-              name,
-              description,
-              imageUrl,
+          code,
+          barcode,
+          name,
+          description,
+          imageUrl,
 
-              productType,
-              sourceType,
+          productType,
+          sourceType,
 
-              unit
-          }
+          unit
+        }
       });
       // ======================================
       // Crear ProductBranch
       // ======================================
 
       await tx.productBranch.create({
-          data: {
-              companyId: req.user.companyId,
-              branchId: req.user.branchId,
+        data: {
+          companyId: req.user.companyId,
+          branchId: req.user.branchId,
 
-              productId: createdProduct.id,
+          productId: createdProduct.id,
 
-              currentStock: 0,
+          currentStock: 0,
 
-              costPrice: costPrice ?? 0,
-              salePrice: salePrice ?? 0,
+          unitCost: unitCost ?? 0,
+          salePrice: salePrice ?? 0,
 
-              minStock: minStock ?? 0,
-              maxStock: maxStock ?? 0,
-              reorderPoint: reorderPoint ?? 0
-          }
+          minStock: minStock ?? 0,
+          maxStock: maxStock ?? 0,
+          reorderPoint: reorderPoint ?? 0
+        }
       });
 
       // ======================================
@@ -461,7 +461,7 @@ export const getProducts = async (req, res) => {
           },
           select: {
             currentStock: true,
-            costPrice: true,
+            unitCost: true,
             salePrice: true,
             minStock: true,
             maxStock: true,
@@ -513,7 +513,7 @@ export const getProductById = async (req, res) => {
           },
           select: {
             currentStock: true,
-            costPrice: true,
+            unitCost: true,
             salePrice: true,
             minStock: true,
             maxStock: true,
@@ -541,7 +541,7 @@ export const getProductById = async (req, res) => {
                       },
                       select: {
                         currentStock: true,
-                        costPrice: true
+                        unitCost: true
                       }
                     }
                   }
@@ -560,7 +560,6 @@ export const getProductById = async (req, res) => {
     }
 
     res.json(product);
-
   } catch (error) {
     console.error(error);
 
@@ -977,7 +976,7 @@ export const updateProduct = async (req, res) => {
                       barcode: true,
                       name: true,
                       unit: true,
-                      costPrice: true
+                      unitCost: true
                     }
                   }
                 }

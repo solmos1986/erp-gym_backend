@@ -35,7 +35,8 @@ export const getSales = async (req, res, next) => {
             description: true,
             quantity: true,
             unitPrice: true,
-            total: true
+            total: true,
+            unitCost: true,
           }
         },
 
@@ -257,10 +258,33 @@ export const annulSale = async (req, res, next) => {
           continue;
         }
 
+        const productBranch = await tx.productBranch.findUnique({
+          where: {
+            branchId_productId: {
+              branchId: sale.branchId,
+              productId: detail.itemId
+            }
+          }
+        });
+
+        if (!productBranch) {
+          throw new Error("ProductBranch no encontrado.");
+        }
+
+        const stock = await calculateStock(tx, companyId, sale.branchId, detail.itemId, "SALE_CANCEL", detail.quantity);
+
+        await tx.productBranch.update({
+          where: {
+            id: productBranch.id
+          },
+          data: {
+            currentStock: stock.currentStock
+          }
+        });
+
         await tx.inventoryMovement.create({
           data: {
             companyId,
-
             branchId: sale.branchId,
 
             productId: detail.itemId,
@@ -269,6 +293,12 @@ export const annulSale = async (req, res, next) => {
 
             quantity: detail.quantity,
 
+            unitCost: detail.unitCost,
+            totalCost: Number(detail.quantity) * Number(detail.unitCost),
+
+            stockAfter: stock.currentStock,
+            unitCostAfter: productBranch.unitCost,
+            status: 'CANCELLED',
             notes: `Anulación Venta #${sale.saleNumber}`,
 
             createdById: userId

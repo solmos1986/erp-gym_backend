@@ -1,5 +1,5 @@
 import prisma from "../../lib/prisma.js";
-import { getStockMap } from "../../utils/inventory.helper.js";
+import { getStockMap } from "../../utils/inventoryStock.helper.js";
 
 //////////////////////////////////////
 // 📊 DASHBOARD INVENTARIO

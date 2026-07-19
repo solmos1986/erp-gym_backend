@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { applyTenantFilter } from "../../utils/tenant.util.js";
-import { calculateStock } from "../../utils/inventory.helper.js";
+import { calculateStock } from "../../utils/inventoryStock.helper.js";
 
 export const createInventoryMovement = async (req, res) => {
   const { productId, movementType, quantity, notes } = req.body;
@@ -50,17 +50,47 @@ export const createInventoryMovement = async (req, res) => {
         message: "El producto está desactivado"
       });
     }
+    // =========================
+    // ACTUALIZAR STOCK
+    // =========================
 
-    // =========================
-    // CREAR MOVIMIENTO
-    // =========================
+    const productBranch = await prisma.productBranch.findUnique({
+      where: {
+        branchId_productId: {
+          branchId: req.user.branchId,
+          productId
+        }
+      }
+    });
+
+    if (!productBranch) {
+      return res.status(404).json({
+        message: "ProductBranch no encontrado"
+      });
+    }
+
+    const stock = await calculateStock(prisma, req.user.companyId, req.user.branchId, productId, movementType, quantity);
+
+    await prisma.productBranch.update({
+      where: {
+        id: productBranch.id
+      },
+      data: {
+        currentStock: stock.currentStock
+      }
+    });
 
     const movement = await prisma.inventoryMovement.create({
       data: {
         movementType,
         quantity,
-        unitCost: 0,
-        totalCost: 0,
+
+        unitCost: productBranch.unitCost,
+        totalCost: Number(quantity) * Number(productBranch.unitCost),
+
+        stockAfter: stock.currentStock,
+        unitCostAfter: productBranch.unitCost,
+
         notes,
 
         companyId: req.user.companyId,
@@ -95,25 +125,10 @@ export const createInventoryMovement = async (req, res) => {
         }
       }
     });
-
-    // =========================
-    // ACTUALIZAR STOCK
-    // =========================
-
-    await calculateStock(
-      prisma,
-      req.user.companyId,
-      req.user.branchId,
-      productId,
-      movementType,
-      quantity
-    );
-
     return res.status(201).json({
       message: "Movimiento registrado correctamente",
       movement
     });
-
   } catch (error) {
     console.error("Error creando movimiento:", error);
 
@@ -286,7 +301,7 @@ export const getStockByBranch = async (req, res) => {
         case "SALE":
         case "ADJUSTMENT_OUT":
         case "TRANSFER_OUT":
-          case "PURCHASE_CANCEL":
+        case "PURCHASE_CANCEL":
           item.stock -= Number(movement.quantity);
           break;
       }

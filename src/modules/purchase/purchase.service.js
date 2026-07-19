@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { createCashMovementPayments } from "../../utils/payment.helper.js";
-import { calculateStock } from '../../utils/inventory.helper.js';
-import { calculateCost } from '../../utils/inventory-cost.helper.js';
+import { calculateStock } from "../../utils/inventoryStock.helper.js";
+import { calculateCost } from "../../utils/inventoryCost.helper.js";
 
 const prisma = new PrismaClient();
 
@@ -172,56 +172,60 @@ export const createPurchase = async ({ supplierId, companyId, branchId, userId, 
         }
       });
       // =========================
+      // 💰 CALCULA NUEVO COSTO
+      // =========================
+
+      const cost = await calculateCost(tx, companyId, branchId, product.id, item.quantity, item.unitCost);
+
+      // =========================
+      // 📈 CALCULA NUEVO STOCK
+      // =========================
+
+      const stock = await calculateStock(tx, companyId, branchId, product.id, "PURCHASE", item.quantity);
+
+      console.log('cost ',cost,' y stock  ',stock);
+      await tx.productBranch.update({
+        where: {
+          branchId_productId: {
+            branchId,
+            productId: product.id
+          }
+        },
+        data: {
+          currentStock: stock,
+          unitCost: cost
+        }
+      });
+
+      // =========================
       // 📦 MOVIMIENTO INVENTARIO
       // =========================
 
       await tx.inventoryMovement.create({
-          data: {
-              companyId,
-              branchId,
+        data: {
+          companyId,
+          branchId,
 
-              productId: product.id,
+          productId: product.id,
 
-              movementType: "PURCHASE",
+          movementType: "PURCHASE",
 
-              referenceType: "PURCHASE",
-              referenceId: purchase.id,
+          referenceType: "PURCHASE",
+          referenceId: purchase.id,
 
-              quantity: item.quantity,
-              unitCost: item.unitCost,
-              totalCost: Number(item.quantity) * Number(item.unitCost),
+          quantity: item.quantity,
+          unitCost: item.unitCost,
+          totalCost: Number(item.quantity) * Number(item.unitCost),
 
-              notes: `Compra #${nextPurchaseNumber}`,
+          notes: `Compra #${nextPurchaseNumber}`,
+          unitCost: item.unitCost,
+          stockAfter: stock,
+          unitCostAfter: cost,
 
-              createdById: userId
-          }
+          createdById: userId
+        }
       });
-
-      // =========================
-      // 💰 ACTUALIZAR COSTO
-      // =========================
-
-      await calculateCost(
-          tx,
-          companyId,
-          branchId,
-          product.id,
-          item.quantity,
-          item.unitCost
-      );
-
-      // =========================
-      // 📈 ACTUALIZAR STOCK
-      // =========================
-
-      await calculateStock(
-          tx,
-          companyId,
-          branchId,
-          product.id,
-          "PURCHASE",
-          item.quantity
-      )};
+    }
     // =========================
     // 💸 MOVIMIENTO CAJA
     // =========================

@@ -1,7 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { createPurchase as createPurchaseService } from "./purchase.service.js";
-import { calculateStock } from '../../utils/inventory.helper.js';
-import { calculateCost } from '../../utils/inventory-cost.helper.js';
+import { calculateStock } from "../../utils/inventoryStock.helper.js";
+import { calculateCost } from "../../utils/inventoryCost.helper.js";
+import { rebuildInventory } from "../../utils/inventoryRebuild.helper.js";
 const prisma = new PrismaClient();
 // =========================
 // 🛒 CREAR COMPRA
@@ -277,9 +278,7 @@ export const cancelPurchase = async (req, res, next) => {
       // 🔒 CAJA CERRADA
       // =========================
 
-      const hasClosedRegister = cashMovements.some(
-        (movement) => movement.cashRegister?.status === "CLOSED"
-      );
+      const hasClosedRegister = cashMovements.some((movement) => movement.cashRegister?.status === "CLOSED");
 
       if (hasClosedRegister) {
         throw new Error("No se puede anular una compra perteneciente a una caja cerrada");
@@ -320,12 +319,77 @@ export const cancelPurchase = async (req, res, next) => {
       });
 
       // =========================
-      // 📦 REVERSIÓN INVENTARIO
-      // =========================
+// 📦 REVERSIÓN INVENTARIO
+// =========================
 
-      for (const detail of purchase.details) {
-        await tx.inventoryMovement.create({
-          data: {
+for (const detail of purchase.details) {
+
+    // =========================
+    // 🔍 BUSCAR MOVIMIENTO ORIGINAL
+    // =========================
+
+    const purchaseMovement = await tx.inventoryMovement.findFirst({
+        where: {
+            companyId,
+            branchId: purchase.branchId,
+            productId: detail.productId,
+            movementType: "PURCHASE",
+            referenceType: "PURCHASE",
+            referenceId: purchase.id,
+            status: "ACTIVE"
+        }
+    });
+
+    if (!purchaseMovement) {
+        throw new Error("Movimiento de inventario de la compra no encontrado.");
+    }
+
+    // =========================
+    // 🚫 CANCELAR MOVIMIENTO ORIGINAL
+    // =========================
+
+    await tx.inventoryMovement.update({
+        where: {
+            id: purchaseMovement.id
+        },
+        data: {
+            status: "CANCELLED"
+        }
+    });
+
+    const productBranch = await tx.productBranch.findUnique({
+        where: {
+            branchId_productId: {
+                branchId: purchase.branchId,
+                productId: detail.productId
+            }
+        }
+    });
+
+    if (!productBranch) {
+        throw new Error("ProductBranch no encontrado.");
+    }
+
+    const stock = await calculateStock(
+        tx,
+        companyId,
+        purchase.branchId,
+        detail.productId,
+        "PURCHASE_CANCEL",
+        detail.quantity
+    );
+
+    await tx.productBranch.update({
+        where: {
+            id: productBranch.id
+        },
+        data: {
+            currentStock: stock
+        }
+    });
+
+    const inventoryMovement = await tx.inventoryMovement.create({
+        data: {
             companyId,
 
             branchId: purchase.branchId,
@@ -336,28 +400,33 @@ export const cancelPurchase = async (req, res, next) => {
 
             quantity: detail.quantity,
 
+            unitCost: detail.unitCost,
+
+            totalCost: Number(detail.quantity) * Number(detail.unitCost),
+
+            stockAfter: stock,
+
+            unitCostAfter: productBranch.unitCost,
+
+            status: "INFO",
+
             notes: `Anulación Compra #${purchase.purchaseNumber}`,
 
+            referenceType: "PURCHASE",
+
+            referenceId: purchase.id,
+
             createdById: userId
-          }
-        });
+        }
+    });
 
-        await calculateStock(
-          tx,
-          companyId,
-          purchase.branchId,
-          detail.productId,
-          "PURCHASE_CANCEL",
-          detail.quantity
-        );
-
-        await calculateCost(
-          tx,
-          companyId,
-          purchase.branchId,
-          detail.productId
-        );
-      }
+    await rebuildInventory(
+        tx,
+        companyId,
+        purchase.branchId,
+        detail.productId
+    );
+}
 
       return purchase;
     });
