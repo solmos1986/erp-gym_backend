@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "CostMethod" AS ENUM ('WEIGHTED_AVERAGE', 'FIFO', 'STANDARD');
+
+-- CreateEnum
 CREATE TYPE "ProductType" AS ENUM ('RAW_MATERIAL', 'FINISHED_PRODUCT', 'SERVICE');
 
 -- CreateEnum
@@ -8,6 +11,24 @@ CREATE TYPE "SourceType" AS ENUM ('PURCHASE', 'PRODUCTION', 'BOTH');
 CREATE TYPE "Unit" AS ENUM ('UNIT', 'KG', 'GRAM', 'LITER', 'ML', 'BOX', 'PACKAGE', 'BOTTLE', 'METER', 'CM', 'MM', 'PAIR', 'ROLL', 'DOZEN');
 
 -- CreateEnum
+CREATE TYPE "ProductionOriginType" AS ENUM ('MANUAL', 'SALE');
+
+-- CreateEnum
+CREATE TYPE "ProductionStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "ProductionItemStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "InventoryMovementStatus" AS ENUM ('ACTIVE', 'CANCELLED', 'INFO');
+
+-- CreateEnum
+CREATE TYPE "InventoryMovementType" AS ENUM ('INITIAL_STOCK', 'PURCHASE', 'SALE', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT', 'TRANSFER_IN', 'TRANSFER_OUT', 'SALE_CANCEL', 'PURCHASE_CANCEL', 'PRODUCTION_IN', 'PRODUCTION_OUT');
+
+-- CreateEnum
+CREATE TYPE "InventoryReferenceType" AS ENUM ('INITIAL_STOCK', 'PURCHASE', 'SALE', 'PRODUCTION_ORDER', 'ADJUSTMENT', 'TRANSFER');
+
+-- CreateEnum
 CREATE TYPE "AccountingClass" AS ENUM ('ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'EXPENSE');
 
 -- CreateEnum
@@ -15,6 +36,9 @@ CREATE TYPE "AccountNature" AS ENUM ('DEBIT', 'CREDIT');
 
 -- CreateEnum
 CREATE TYPE "PurchaseStatus" AS ENUM ('CONFIRMED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "FulfillmentStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'READY', 'DELIVERED');
 
 -- CreateEnum
 CREATE TYPE "SaleItemType" AS ENUM ('MEMBERSHIP_PLAN', 'PRODUCT', 'SERVICE');
@@ -58,9 +82,6 @@ CREATE TYPE "CommandStatus" AS ENUM ('PENDING', 'PROCESSING', 'DONE', 'ERROR');
 -- CreateEnum
 CREATE TYPE "CommandType" AS ENUM ('SYNC_MEMBERSHIP', 'DELETE_USER', 'SYNC_FACE', 'SYNC_USER_FULL');
 
--- CreateEnum
-CREATE TYPE "InventoryMovementType" AS ENUM ('INITIAL_STOCK', 'PURCHASE', 'PURCHASE_CANCEL', 'SALE', 'SALE_CANCEL', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT', 'TRANSFER_IN', 'TRANSFER_OUT');
-
 -- CreateTable
 CREATE TABLE "Company" (
     "id" TEXT NOT NULL,
@@ -70,6 +91,7 @@ CREATE TABLE "Company" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "logoUrl" TEXT,
     "businessTemplateId" TEXT,
+    "costMethod" "CostMethod" NOT NULL DEFAULT 'WEIGHTED_AVERAGE',
 
     CONSTRAINT "Company_pkey" PRIMARY KEY ("id")
 );
@@ -283,27 +305,20 @@ CREATE TABLE "Command" (
 CREATE TABLE "Product" (
     "id" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
-    "branchId" TEXT,
     "productCategoryId" TEXT,
     "code" TEXT,
-    "barcode" TEXT,
     "name" TEXT NOT NULL,
     "description" TEXT,
-    "imageUrl" TEXT,
-    "productType" "ProductType" NOT NULL DEFAULT 'FINISHED_PRODUCT',
-    "sourceType" "SourceType" NOT NULL DEFAULT 'PURCHASE',
-    "inventoryControl" BOOLEAN NOT NULL DEFAULT true,
-    "unit" "Unit" NOT NULL DEFAULT 'UNIT',
-    "currentStock" DECIMAL(18,2) NOT NULL DEFAULT 0,
-    "costPrice" DECIMAL(18,2) NOT NULL DEFAULT 0,
-    "salePrice" DECIMAL(18,2) NOT NULL DEFAULT 0,
-    "minStock" DECIMAL(18,2),
-    "maxStock" DECIMAL(18,2),
-    "reorderPoint" DECIMAL(18,2),
-    "isForSale" BOOLEAN NOT NULL DEFAULT true,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "barcode" TEXT,
+    "imageUrl" TEXT,
+    "inventoryControl" BOOLEAN NOT NULL DEFAULT true,
+    "isForSale" BOOLEAN NOT NULL DEFAULT true,
+    "productType" "ProductType" NOT NULL DEFAULT 'FINISHED_PRODUCT',
+    "sourceType" "SourceType" NOT NULL DEFAULT 'PURCHASE',
+    "unit" "Unit" NOT NULL DEFAULT 'UNIT',
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
 );
@@ -322,16 +337,120 @@ CREATE TABLE "ProductCategory" (
 );
 
 -- CreateTable
+CREATE TABLE "ProductBom" (
+    "id" TEXT NOT NULL,
+    "companyId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "version" INTEGER NOT NULL DEFAULT 1,
+    "name" TEXT,
+    "description" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ProductBom_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductBomItem" (
+    "id" TEXT NOT NULL,
+    "bomId" TEXT NOT NULL,
+    "materialId" TEXT NOT NULL,
+    "quantity" DECIMAL(18,4) NOT NULL,
+    "wastePercent" DECIMAL(5,2) NOT NULL DEFAULT 0,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProductBomItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductionOrder" (
+    "id" TEXT NOT NULL,
+    "companyId" TEXT NOT NULL,
+    "branchId" TEXT,
+    "number" INTEGER NOT NULL,
+    "originType" "ProductionOriginType" NOT NULL DEFAULT 'MANUAL',
+    "originId" TEXT,
+    "status" "ProductionStatus" NOT NULL DEFAULT 'PENDING',
+    "notes" TEXT,
+    "requestedById" TEXT NOT NULL,
+    "startedById" TEXT,
+    "finishedById" TEXT,
+    "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "startedAt" TIMESTAMP(3),
+    "finishedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ProductionOrder_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductionOrderItem" (
+    "id" TEXT NOT NULL,
+    "productionOrderId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "quantity" DECIMAL(18,4) NOT NULL,
+    "unitCost" DECIMAL(18,4) NOT NULL DEFAULT 0,
+    "totalCost" DECIMAL(18,2) NOT NULL DEFAULT 0,
+    "status" "ProductionItemStatus" NOT NULL DEFAULT 'PENDING',
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProductionOrderItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductionConsumption" (
+    "id" TEXT NOT NULL,
+    "productionOrderItemId" TEXT NOT NULL,
+    "materialId" TEXT NOT NULL,
+    "quantity" DECIMAL(18,4) NOT NULL,
+    "unitCost" DECIMAL(18,4) NOT NULL,
+    "totalCost" DECIMAL(18,2) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProductionConsumption_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductBranch" (
+    "id" TEXT NOT NULL,
+    "companyId" TEXT NOT NULL,
+    "branchId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "currentStock" DECIMAL(18,6) NOT NULL DEFAULT 0,
+    "unitCost" DECIMAL(18,6) NOT NULL DEFAULT 0,
+    "salePrice" DECIMAL(18,6) NOT NULL DEFAULT 0,
+    "minStock" DECIMAL(18,6),
+    "maxStock" DECIMAL(18,6),
+    "reorderPoint" DECIMAL(18,6),
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ProductBranch_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "InventoryMovement" (
     "id" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
     "branchId" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
-    "movementType" "InventoryMovementType" NOT NULL,
-    "quantity" DECIMAL(10,2) NOT NULL,
+    "quantity" DECIMAL(18,6) NOT NULL,
     "notes" TEXT,
-    "createdById" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdById" TEXT,
+    "movementType" "InventoryMovementType" NOT NULL,
+    "referenceId" TEXT,
+    "referenceType" "InventoryReferenceType",
+    "status" "InventoryMovementStatus" NOT NULL DEFAULT 'ACTIVE',
+    "stockAfter" DECIMAL(65,30),
+    "totalCost" DECIMAL(18,6) NOT NULL DEFAULT 0,
+    "unitCost" DECIMAL(18,6) NOT NULL DEFAULT 0,
+    "unitCostAfter" DECIMAL(65,30),
 
     CONSTRAINT "InventoryMovement_pkey" PRIMARY KEY ("id")
 );
@@ -396,9 +515,8 @@ CREATE TABLE "Sale" (
     "id" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
     "branchId" TEXT,
-    "userId" TEXT,
-    "saleNumber" INTEGER,
     "customerId" TEXT,
+    "saleNumber" INTEGER,
     "saleDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "subtotal" DECIMAL(18,2) NOT NULL,
     "discount" DECIMAL(18,2) NOT NULL DEFAULT 0,
@@ -408,8 +526,10 @@ CREATE TABLE "Sale" (
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "cancelledById" TEXT,
     "cancelledAt" TIMESTAMP(3),
+    "cancelledById" TEXT,
+    "userId" TEXT,
+    "fulfillmentStatus" "FulfillmentStatus" NOT NULL DEFAULT 'PENDING',
 
     CONSTRAINT "Sale_pkey" PRIMARY KEY ("id")
 );
@@ -424,10 +544,10 @@ CREATE TABLE "SaleDetail" (
     "description" TEXT NOT NULL,
     "quantity" DECIMAL(18,2) NOT NULL DEFAULT 1,
     "unitPrice" DECIMAL(18,2) NOT NULL,
-    "unitCost" DECIMAL(10,2) NOT NULL,
     "discount" DECIMAL(18,2) NOT NULL DEFAULT 0,
     "total" DECIMAL(18,2) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "unitCost" DECIMAL(10,2) NOT NULL,
 
     CONSTRAINT "SaleDetail_pkey" PRIMARY KEY ("id")
 );
@@ -437,9 +557,8 @@ CREATE TABLE "Purchase" (
     "id" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
     "branchId" TEXT NOT NULL,
-    "userId" TEXT,
-    "purchaseNumber" INTEGER,
     "supplierId" TEXT NOT NULL,
+    "purchaseNumber" INTEGER,
     "purchaseDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "subtotal" DECIMAL(18,2) NOT NULL,
     "discount" DECIMAL(18,2) NOT NULL DEFAULT 0,
@@ -449,8 +568,9 @@ CREATE TABLE "Purchase" (
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "cancelledById" TEXT,
     "cancelledAt" TIMESTAMP(3),
+    "cancelledById" TEXT,
+    "userId" TEXT,
 
     CONSTRAINT "Purchase_pkey" PRIMARY KEY ("id")
 );
@@ -460,11 +580,11 @@ CREATE TABLE "PurchaseDetail" (
     "id" TEXT NOT NULL,
     "purchaseId" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
-    "code" TEXT,
-    "description" TEXT NOT NULL,
     "quantity" DECIMAL(18,2) NOT NULL,
     "unitCost" DECIMAL(18,2) NOT NULL,
     "total" DECIMAL(18,2) NOT NULL,
+    "code" TEXT,
+    "description" TEXT NOT NULL,
 
     CONSTRAINT "PurchaseDetail_pkey" PRIMARY KEY ("id")
 );
@@ -628,9 +748,6 @@ CREATE INDEX "Command_membershipSaleId_idx" ON "Command"("membershipSaleId");
 CREATE INDEX "Product_companyId_idx" ON "Product"("companyId");
 
 -- CreateIndex
-CREATE INDEX "Product_branchId_idx" ON "Product"("branchId");
-
--- CreateIndex
 CREATE INDEX "Product_productCategoryId_idx" ON "Product"("productCategoryId");
 
 -- CreateIndex
@@ -646,6 +763,63 @@ CREATE INDEX "Product_name_idx" ON "Product"("name");
 CREATE INDEX "ProductCategory_companyId_idx" ON "ProductCategory"("companyId");
 
 -- CreateIndex
+CREATE INDEX "ProductBom_companyId_idx" ON "ProductBom"("companyId");
+
+-- CreateIndex
+CREATE INDEX "ProductBom_productId_idx" ON "ProductBom"("productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProductBom_productId_version_key" ON "ProductBom"("productId", "version");
+
+-- CreateIndex
+CREATE INDEX "ProductBomItem_bomId_idx" ON "ProductBomItem"("bomId");
+
+-- CreateIndex
+CREATE INDEX "ProductBomItem_materialId_idx" ON "ProductBomItem"("materialId");
+
+-- CreateIndex
+CREATE INDEX "ProductionOrder_companyId_idx" ON "ProductionOrder"("companyId");
+
+-- CreateIndex
+CREATE INDEX "ProductionOrder_branchId_idx" ON "ProductionOrder"("branchId");
+
+-- CreateIndex
+CREATE INDEX "ProductionOrder_status_idx" ON "ProductionOrder"("status");
+
+-- CreateIndex
+CREATE INDEX "ProductionOrder_originType_idx" ON "ProductionOrder"("originType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProductionOrder_companyId_number_key" ON "ProductionOrder"("companyId", "number");
+
+-- CreateIndex
+CREATE INDEX "ProductionOrderItem_productionOrderId_idx" ON "ProductionOrderItem"("productionOrderId");
+
+-- CreateIndex
+CREATE INDEX "ProductionOrderItem_productId_idx" ON "ProductionOrderItem"("productId");
+
+-- CreateIndex
+CREATE INDEX "ProductionOrderItem_status_idx" ON "ProductionOrderItem"("status");
+
+-- CreateIndex
+CREATE INDEX "ProductionConsumption_productionOrderItemId_idx" ON "ProductionConsumption"("productionOrderItemId");
+
+-- CreateIndex
+CREATE INDEX "ProductionConsumption_materialId_idx" ON "ProductionConsumption"("materialId");
+
+-- CreateIndex
+CREATE INDEX "ProductBranch_companyId_idx" ON "ProductBranch"("companyId");
+
+-- CreateIndex
+CREATE INDEX "ProductBranch_branchId_idx" ON "ProductBranch"("branchId");
+
+-- CreateIndex
+CREATE INDEX "ProductBranch_productId_idx" ON "ProductBranch"("productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProductBranch_branchId_productId_key" ON "ProductBranch"("branchId", "productId");
+
+-- CreateIndex
 CREATE INDEX "InventoryMovement_companyId_idx" ON "InventoryMovement"("companyId");
 
 -- CreateIndex
@@ -656,6 +830,9 @@ CREATE INDEX "InventoryMovement_productId_idx" ON "InventoryMovement"("productId
 
 -- CreateIndex
 CREATE INDEX "InventoryMovement_createdAt_idx" ON "InventoryMovement"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "InventoryMovement_referenceType_referenceId_idx" ON "InventoryMovement"("referenceType", "referenceId");
 
 -- CreateIndex
 CREATE INDEX "CashRegister_companyId_idx" ON "CashRegister"("companyId");
@@ -844,10 +1021,10 @@ ALTER TABLE "MembershipSale" ADD CONSTRAINT "MembershipSale_partnerId_fkey" FORE
 ALTER TABLE "MembershipSale" ADD CONSTRAINT "MembershipSale_planId_fkey" FOREIGN KEY ("planId") REFERENCES "Plan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MembershipSale" ADD CONSTRAINT "MembershipSale_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "MembershipSale" ADD CONSTRAINT "MembershipSale_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MembershipSale" ADD CONSTRAINT "MembershipSale_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "MembershipSale" ADD CONSTRAINT "MembershipSale_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CustomerMembership" ADD CONSTRAINT "CustomerMembership_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -877,19 +1054,64 @@ ALTER TABLE "Command" ADD CONSTRAINT "Command_membershipSaleId_fkey" FOREIGN KEY
 ALTER TABLE "Product" ADD CONSTRAINT "Product_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Product" ADD CONSTRAINT "Product_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_productCategoryId_fkey" FOREIGN KEY ("productCategoryId") REFERENCES "ProductCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ProductCategory" ADD CONSTRAINT "ProductCategory_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "InventoryMovement" ADD CONSTRAINT "InventoryMovement_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ProductBom" ADD CONSTRAINT "ProductBom_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductBom" ADD CONSTRAINT "ProductBom_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductBomItem" ADD CONSTRAINT "ProductBomItem_bomId_fkey" FOREIGN KEY ("bomId") REFERENCES "ProductBom"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductBomItem" ADD CONSTRAINT "ProductBomItem_materialId_fkey" FOREIGN KEY ("materialId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionOrder" ADD CONSTRAINT "ProductionOrder_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionOrder" ADD CONSTRAINT "ProductionOrder_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionOrder" ADD CONSTRAINT "ProductionOrder_finishedById_fkey" FOREIGN KEY ("finishedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionOrder" ADD CONSTRAINT "ProductionOrder_requestedById_fkey" FOREIGN KEY ("requestedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionOrder" ADD CONSTRAINT "ProductionOrder_startedById_fkey" FOREIGN KEY ("startedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionOrderItem" ADD CONSTRAINT "ProductionOrderItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionOrderItem" ADD CONSTRAINT "ProductionOrderItem_productionOrderId_fkey" FOREIGN KEY ("productionOrderId") REFERENCES "ProductionOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionConsumption" ADD CONSTRAINT "ProductionConsumption_materialId_fkey" FOREIGN KEY ("materialId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductionConsumption" ADD CONSTRAINT "ProductionConsumption_productionOrderItemId_fkey" FOREIGN KEY ("productionOrderItemId") REFERENCES "ProductionOrderItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductBranch" ADD CONSTRAINT "ProductBranch_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductBranch" ADD CONSTRAINT "ProductBranch_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductBranch" ADD CONSTRAINT "ProductBranch_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "InventoryMovement" ADD CONSTRAINT "InventoryMovement_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InventoryMovement" ADD CONSTRAINT "InventoryMovement_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "InventoryMovement" ADD CONSTRAINT "InventoryMovement_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -898,34 +1120,31 @@ ALTER TABLE "InventoryMovement" ADD CONSTRAINT "InventoryMovement_createdById_fk
 ALTER TABLE "InventoryMovement" ADD CONSTRAINT "InventoryMovement_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CashRegister" ADD CONSTRAINT "CashRegister_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "CashRegister" ADD CONSTRAINT "CashRegister_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "CashRegister" ADD CONSTRAINT "CashRegister_openedById_fkey" FOREIGN KEY ("openedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CashRegister" ADD CONSTRAINT "CashRegister_closedById_fkey" FOREIGN KEY ("closedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CashMovement" ADD CONSTRAINT "CashMovement_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "CashRegister" ADD CONSTRAINT "CashRegister_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CashRegister" ADD CONSTRAINT "CashRegister_openedById_fkey" FOREIGN KEY ("openedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CashMovement" ADD CONSTRAINT "CashMovement_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CashMovement" ADD CONSTRAINT "CashMovement_cashRegisterId_fkey" FOREIGN KEY ("cashRegisterId") REFERENCES "CashRegister"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "CashMovement" ADD CONSTRAINT "CashMovement_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "CashMovement" ADD CONSTRAINT "CashMovement_cancelledById_fkey" FOREIGN KEY ("cancelledById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Payment" ADD CONSTRAINT "Payment_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "CashMovement" ADD CONSTRAINT "CashMovement_cashRegisterId_fkey" FOREIGN KEY ("cashRegisterId") REFERENCES "CashRegister"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CashMovement" ADD CONSTRAINT "CashMovement_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CashMovement" ADD CONSTRAINT "CashMovement_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -934,25 +1153,28 @@ ALTER TABLE "Payment" ADD CONSTRAINT "Payment_branchId_fkey" FOREIGN KEY ("branc
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_cashMovementId_fkey" FOREIGN KEY ("cashMovementId") REFERENCES "CashMovement"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Sale" ADD CONSTRAINT "Sale_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Sale" ADD CONSTRAINT "Sale_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Sale" ADD CONSTRAINT "Sale_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Sale" ADD CONSTRAINT "Sale_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Sale" ADD CONSTRAINT "Sale_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Partner"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Sale" ADD CONSTRAINT "Sale_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "SaleDetail" ADD CONSTRAINT "SaleDetail_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Partner"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -961,10 +1183,10 @@ ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_supplierId_fkey" FOREIGN KEY ("s
 ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "PurchaseDetail" ADD CONSTRAINT "PurchaseDetail_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PurchaseDetail" ADD CONSTRAINT "PurchaseDetail_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "PurchaseDetail" ADD CONSTRAINT "PurchaseDetail_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PurchaseDetail" ADD CONSTRAINT "PurchaseDetail_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "BusinessTemplatePermission" ADD CONSTRAINT "BusinessTemplatePermission_businessTemplateId_fkey" FOREIGN KEY ("businessTemplateId") REFERENCES "BusinessTemplate"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -976,14 +1198,13 @@ ALTER TABLE "BusinessTemplatePermission" ADD CONSTRAINT "BusinessTemplatePermiss
 ALTER TABLE "RoleTemplate" ADD CONSTRAINT "RoleTemplate_businessTemplateId_fkey" FOREIGN KEY ("businessTemplateId") REFERENCES "BusinessTemplate"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "RoleTemplatePermission" ADD CONSTRAINT "RoleTemplatePermission_roleTemplateId_fkey" FOREIGN KEY ("roleTemplateId") REFERENCES "RoleTemplate"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "RoleTemplatePermission" ADD CONSTRAINT "RoleTemplatePermission_permissionId_fkey" FOREIGN KEY ("permissionId") REFERENCES "Permission"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "RoleTemplatePermission" ADD CONSTRAINT "RoleTemplatePermission_permissionId_fkey" FOREIGN KEY ("permissionId") REFERENCES "Permission"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "RoleTemplatePermission" ADD CONSTRAINT "RoleTemplatePermission_roleTemplateId_fkey" FOREIGN KEY ("roleTemplateId") REFERENCES "RoleTemplate"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AccountTemplate" ADD CONSTRAINT "AccountTemplate_businessTemplateId_fkey" FOREIGN KEY ("businessTemplateId") REFERENCES "BusinessTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AccountTemplate" ADD CONSTRAINT "AccountTemplate_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "AccountTemplate"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
