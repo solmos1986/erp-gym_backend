@@ -493,7 +493,7 @@ async function main() {
   // =========================
 
   const monitorEmail = "monitor@erp.com";
-  const monitorPasswordHash = await bcrypt.hash("Monitor.2026", 10);
+  const monitorPasswordHash = await bcrypt.hash("monitor.2026", 10);
 
   const monitorUser = await prisma.user.upsert({
     where: { email: monitorEmail },
