@@ -183,7 +183,7 @@ export const createPurchase = async ({ supplierId, companyId, branchId, userId, 
 
       const stock = await calculateStock(tx, companyId, branchId, product.id, "PURCHASE", item.quantity);
 
-      console.log('cost ',cost,' y stock  ',stock);
+      console.log("cost ", cost, " y stock  ", stock);
       await tx.productBranch.update({
         where: {
           branchId_productId: {

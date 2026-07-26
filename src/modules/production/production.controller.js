@@ -82,9 +82,9 @@ export const updateProductionOrder = async (req, res) => {
 // =========================
 // ❌ CANCELAR ORDEN
 // =========================
-export const deleteProductionOrder = async (req, res) => {
+export const cancelProductionOrder = async (req, res) => {
   try {
-    await productionService.deleteProductionOrder(req);
+    await productionService.cancelProductionOrder(req);
 
     res.json({
       message: "Orden de producción cancelada correctamente."

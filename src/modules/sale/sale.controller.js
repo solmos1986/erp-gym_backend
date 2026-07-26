@@ -36,7 +36,7 @@ export const getSales = async (req, res, next) => {
             quantity: true,
             unitPrice: true,
             total: true,
-            unitCost: true,
+            unitCost: true
           }
         },
 
@@ -298,7 +298,7 @@ export const annulSale = async (req, res, next) => {
 
             stockAfter: stock.currentStock,
             unitCostAfter: productBranch.unitCost,
-            status: 'CANCELLED',
+            status: "CANCELLED",
             notes: `Anulación Venta #${sale.saleNumber}`,
 
             createdById: userId

@@ -4,7 +4,7 @@ import {
   getProductionOrders,
   getProductionOrderById,
   updateProductionOrder,
-  deleteProductionOrder,
+  cancelProductionOrder,
   activateProductionOrder,
   startProductionOrder,
   startProductionOrderItem,
@@ -40,7 +40,7 @@ router.put("/:id", requireAuth, requirePermission("TENANT_PRODUCTION_EDIT"), ten
 // =========================
 // ❌ CANCELAR ORDEN
 // =========================
-router.delete("/:id", requireAuth, requirePermission("TENANT_PRODUCTION_DELETE"), tenantGuard, deleteProductionOrder);
+router.delete("/:id", requireAuth, requirePermission("TENANT_PRODUCTION_DELETE"), tenantGuard, cancelProductionOrder);
 
 // =========================
 // ✅ REACTIVAR ORDEN

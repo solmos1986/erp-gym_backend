@@ -12,7 +12,11 @@ export const createProduct = async (req, res) => {
 
   const productData = req.body.product ?? req.body;
   const bom = req.body.bom ?? null;
-
+console.log("================================");
+console.log("BODY:", JSON.stringify(req.body, null, 2));
+console.log("PRODUCT:", productData);
+console.log("unitCost recibido:", productData.unitCost);
+console.log("================================");
   let {
     code,
     barcode,
@@ -592,7 +596,7 @@ export const updateProduct = async (req, res) => {
     sourceType,
 
     unit,
-
+    unitCost,
     salePrice,
 
     minStock,
@@ -829,36 +833,46 @@ export const updateProduct = async (req, res) => {
       // =========================
 
       const updatedProduct = await tx.product.update({
-        where: {
-          id
-        },
+          where: {
+              id
+          },
 
-        data: {
-          code,
-          barcode,
-          name,
-          description,
-          imageUrl,
+          data: {
+              code,
+              barcode,
+              name,
+              description,
+              imageUrl,
 
-          productType,
-          sourceType,
+              productType,
+              sourceType,
 
-          unit,
+              unit,
 
-          salePrice,
+              isActive,
 
-          minStock,
-          maxStock,
-          reorderPoint,
-
-          isActive,
-
-          category: {
-            connect: {
-              id: productCategoryId
-            }
+              category: {
+                  connect: {
+                      id: productCategoryId
+                  }
+              }
           }
-        }
+      });
+      await tx.productBranch.update({
+          where: {
+              branchId_productId: {
+                  branchId: req.user.branchId,
+                  productId: updatedProduct.id
+              }
+          },
+
+          data: {
+              unitCost,
+              salePrice,
+              minStock,
+              maxStock,
+              reorderPoint
+          }
       });
 
       // =========================
@@ -970,14 +984,18 @@ export const updateProduct = async (req, res) => {
               items: {
                 include: {
                   material: {
-                    select: {
-                      id: true,
-                      code: true,
-                      barcode: true,
-                      name: true,
-                      unit: true,
-                      unitCost: true
-                    }
+                      include: {
+                          productBranches: {
+                              where: {
+                                  branchId: req.user.branchId
+                              },
+                              select: {
+                                  unitCost: true,
+                                  currentStock: true,
+                                  salePrice: true
+                              }
+                          }
+                      }
                   }
                 }
               }

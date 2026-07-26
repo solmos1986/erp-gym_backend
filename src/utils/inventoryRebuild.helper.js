@@ -204,198 +204,179 @@
 //   }
 // }
 export async function rebuildInventory(tx, companyId, branchId, productId) {
+  const movements = await tx.inventoryMovement.findMany({
+    where: {
+      companyId,
+      branchId,
+      productId,
+      status: "ACTIVE"
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }]
+  });
 
-    const movements = await tx.inventoryMovement.findMany({
-        where: {
-            companyId,
-            branchId,
-            productId,
-            status: "ACTIVE"
-        },
-        orderBy: [
-            { createdAt: "asc" },
-            { id: "asc" }
-        ]
-    });
+  let stock = 0;
+  let unitCost = 0;
 
-    let stock = 0;
-    let unitCost = 0;
+  for (const movement of movements) {
+    const qty = Number(movement.quantity);
 
-    for (const movement of movements) {
+    switch (movement.movementType) {
+      // =====================================================
+      // PURCHASE
+      // =====================================================
+      case "PURCHASE": {
+        const purchaseCost = Number(movement.unitCost);
 
-        const qty = Number(movement.quantity);
+        const inventoryValue = stock * unitCost;
+        const purchaseValue = qty * purchaseCost;
 
-        switch (movement.movementType) {
+        stock += qty;
 
-            // =====================================================
-            // PURCHASE
-            // =====================================================
-            case "PURCHASE": {
+        unitCost = stock > 0 ? (inventoryValue + purchaseValue) / stock : 0;
 
-                const purchaseCost = Number(movement.unitCost);
+        await tx.inventoryMovement.update({
+          where: {
+            id: movement.id
+          },
+          data: {
+            stockAfter: stock,
+            unitCostAfter: unitCost
+          }
+        });
 
-                const inventoryValue = stock * unitCost;
-                const purchaseValue = qty * purchaseCost;
+        break;
+      }
 
-                stock += qty;
+      // =====================================================
+      // SALE
+      // =====================================================
+      case "SALE": {
+        const saleUnitCost = unitCost;
+        const totalCost = saleUnitCost * qty;
 
-                unitCost = stock > 0
-                    ? (inventoryValue + purchaseValue) / stock
-                    : 0;
+        stock -= qty;
 
-                await tx.inventoryMovement.update({
-                    where: {
-                        id: movement.id
-                    },
-                    data: {
-                        stockAfter: stock,
-                        unitCostAfter: unitCost
-                    }
-                });
+        await tx.inventoryMovement.update({
+          where: {
+            id: movement.id
+          },
+          data: {
+            unitCost: saleUnitCost,
+            totalCost: totalCost,
+            stockAfter: stock,
+            unitCostAfter: unitCost
+          }
+        });
+        await tx.saleDetail.updateMany({
+          where: {
+            saleId: movement.referenceId,
+            itemType: "PRODUCT",
+            itemId: movement.productId
+          },
+          data: {
+            unitCost: saleUnitCost
+          }
+        });
 
-                break;
-            }
+        break;
+      }
 
-            // =====================================================
-            // SALE
-            // =====================================================
-            case "SALE": {
+      // =====================================================
+      // SALE CANCEL
+      // =====================================================
+      case "SALE_CANCEL": {
+        const returnCost = Number(movement.unitCost);
 
-                const saleUnitCost = unitCost;
-                const totalCost = saleUnitCost * qty;
+        const inventoryValue = stock * unitCost;
+        const returnValue = qty * returnCost;
 
-                stock -= qty;
+        stock += qty;
 
-                await tx.inventoryMovement.update({
-                    where: {
-                        id: movement.id
-                    },
-                    data: {
-                        unitCost: saleUnitCost,
-                        totalCost: totalCost,
-                        stockAfter: stock,
-                        unitCostAfter: unitCost
-                    }
-                });
-                await tx.saleDetail.updateMany({
-                    where: {
-                        saleId: movement.referenceId,
-                        itemType: "PRODUCT",
-                        itemId: movement.productId
-                    },
-                    data: {
-                        unitCost: saleUnitCost
-                    }
-                });
+        unitCost = stock > 0 ? (inventoryValue + returnValue) / stock : 0;
 
-                break;
-            }
+        await tx.inventoryMovement.update({
+          where: {
+            id: movement.id
+          },
+          data: {
+            stockAfter: stock,
+            unitCostAfter: unitCost
+          }
+        });
 
-            // =====================================================
-            // SALE CANCEL
-            // =====================================================
-            case "SALE_CANCEL": {
+        break;
+      }
 
-                const returnCost = Number(movement.unitCost);
+      // =====================================================
+      // ADJUSTMENT IN
+      // =====================================================
+      case "ADJUSTMENT_IN": {
+        const adjustmentCost = Number(movement.unitCost);
 
-                const inventoryValue = stock * unitCost;
-                const returnValue = qty * returnCost;
+        const inventoryValue = stock * unitCost;
+        const adjustmentValue = qty * adjustmentCost;
 
-                stock += qty;
+        stock += qty;
 
-                unitCost = stock > 0
-                    ? (inventoryValue + returnValue) / stock
-                    : 0;
+        unitCost = stock > 0 ? (inventoryValue + adjustmentValue) / stock : 0;
 
-                await tx.inventoryMovement.update({
-                    where: {
-                        id: movement.id
-                    },
-                    data: {
-                        stockAfter: stock,
-                        unitCostAfter: unitCost
-                    }
-                });
+        await tx.inventoryMovement.update({
+          where: {
+            id: movement.id
+          },
+          data: {
+            stockAfter: stock,
+            unitCostAfter: unitCost
+          }
+        });
 
-                break;
-            }
+        break;
+      }
 
-            // =====================================================
-            // ADJUSTMENT IN
-            // =====================================================
-            case "ADJUSTMENT_IN": {
+      // =====================================================
+      // ADJUSTMENT OUT
+      // =====================================================
+      case "ADJUSTMENT_OUT": {
+        const adjustmentCost = unitCost;
+        const totalCost = adjustmentCost * qty;
 
-                const adjustmentCost = Number(movement.unitCost);
+        stock -= qty;
 
-                const inventoryValue = stock * unitCost;
-                const adjustmentValue = qty * adjustmentCost;
+        await tx.inventoryMovement.update({
+          where: {
+            id: movement.id
+          },
+          data: {
+            unitCost: adjustmentCost,
+            totalCost: totalCost,
+            stockAfter: stock,
+            unitCostAfter: unitCost
+          }
+        });
 
-                stock += qty;
+        break;
+      }
 
-                unitCost = stock > 0
-                    ? (inventoryValue + adjustmentValue) / stock
-                    : 0;
-
-                await tx.inventoryMovement.update({
-                    where: {
-                        id: movement.id
-                    },
-                    data: {
-                        stockAfter: stock,
-                        unitCostAfter: unitCost
-                    }
-                });
-
-                break;
-            }
-
-            // =====================================================
-            // ADJUSTMENT OUT
-            // =====================================================
-            case "ADJUSTMENT_OUT": {
-
-                const adjustmentCost = unitCost;
-                const totalCost = adjustmentCost * qty;
-
-                stock -= qty;
-
-                await tx.inventoryMovement.update({
-                    where: {
-                        id: movement.id
-                    },
-                    data: {
-                        unitCost: adjustmentCost,
-                        totalCost: totalCost,
-                        stockAfter: stock,
-                        unitCostAfter: unitCost
-                    }
-                });
-
-                break;
-            }
-
-            default:
-                break;
-        }
-
+      default:
+        break;
     }
+  }
 
-    await tx.productBranch.update({
-        where: {
-            branchId_productId: {
-                branchId,
-                productId
-            }
-        },
-        data: {
-            currentStock: stock,
-            unitCost: unitCost
-        }
-    });
+  await tx.productBranch.update({
+    where: {
+      branchId_productId: {
+        branchId,
+        productId
+      }
+    },
+    data: {
+      currentStock: stock,
+      unitCost: unitCost
+    }
+  });
 
-    return {
-        currentStock: stock,
-        unitCost: unitCost
-    };
-
+  return {
+    currentStock: stock,
+    unitCost: unitCost
+  };
 }

@@ -319,17 +319,16 @@ export const cancelPurchase = async (req, res, next) => {
       });
 
       // =========================
-// 📦 REVERSIÓN INVENTARIO
-// =========================
+      // 📦 REVERSIÓN INVENTARIO
+      // =========================
 
-for (const detail of purchase.details) {
+      for (const detail of purchase.details) {
+        // =========================
+        // 🔍 BUSCAR MOVIMIENTO ORIGINAL
+        // =========================
 
-    // =========================
-    // 🔍 BUSCAR MOVIMIENTO ORIGINAL
-    // =========================
-
-    const purchaseMovement = await tx.inventoryMovement.findFirst({
-        where: {
+        const purchaseMovement = await tx.inventoryMovement.findFirst({
+          where: {
             companyId,
             branchId: purchase.branchId,
             productId: detail.productId,
@@ -337,59 +336,52 @@ for (const detail of purchase.details) {
             referenceType: "PURCHASE",
             referenceId: purchase.id,
             status: "ACTIVE"
+          }
+        });
+
+        if (!purchaseMovement) {
+          throw new Error("Movimiento de inventario de la compra no encontrado.");
         }
-    });
 
-    if (!purchaseMovement) {
-        throw new Error("Movimiento de inventario de la compra no encontrado.");
-    }
+        // =========================
+        // 🚫 CANCELAR MOVIMIENTO ORIGINAL
+        // =========================
 
-    // =========================
-    // 🚫 CANCELAR MOVIMIENTO ORIGINAL
-    // =========================
-
-    await tx.inventoryMovement.update({
-        where: {
+        await tx.inventoryMovement.update({
+          where: {
             id: purchaseMovement.id
-        },
-        data: {
+          },
+          data: {
             status: "CANCELLED"
-        }
-    });
+          }
+        });
 
-    const productBranch = await tx.productBranch.findUnique({
-        where: {
+        const productBranch = await tx.productBranch.findUnique({
+          where: {
             branchId_productId: {
-                branchId: purchase.branchId,
-                productId: detail.productId
+              branchId: purchase.branchId,
+              productId: detail.productId
             }
+          }
+        });
+
+        if (!productBranch) {
+          throw new Error("ProductBranch no encontrado.");
         }
-    });
 
-    if (!productBranch) {
-        throw new Error("ProductBranch no encontrado.");
-    }
+        const stock = await calculateStock(tx, companyId, purchase.branchId, detail.productId, "PURCHASE_CANCEL", detail.quantity);
 
-    const stock = await calculateStock(
-        tx,
-        companyId,
-        purchase.branchId,
-        detail.productId,
-        "PURCHASE_CANCEL",
-        detail.quantity
-    );
-
-    await tx.productBranch.update({
-        where: {
+        await tx.productBranch.update({
+          where: {
             id: productBranch.id
-        },
-        data: {
+          },
+          data: {
             currentStock: stock
-        }
-    });
+          }
+        });
 
-    const inventoryMovement = await tx.inventoryMovement.create({
-        data: {
+        const inventoryMovement = await tx.inventoryMovement.create({
+          data: {
             companyId,
 
             branchId: purchase.branchId,
@@ -417,16 +409,11 @@ for (const detail of purchase.details) {
             referenceId: purchase.id,
 
             createdById: userId
-        }
-    });
+          }
+        });
 
-    await rebuildInventory(
-        tx,
-        companyId,
-        purchase.branchId,
-        detail.productId
-    );
-}
+        await rebuildInventory(tx, companyId, purchase.branchId, detail.productId);
+      }
 
       return purchase;
     });

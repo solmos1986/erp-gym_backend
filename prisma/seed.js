@@ -9,6 +9,7 @@ async function main() {
   // =========================
   const roles = [
     { name: "SYSTEM_ADMIN", scope: "SYSTEM" },
+    { name: "SYSTEM_MONITOR", scope: "SYSTEM" },
     { name: "OWNER", scope: "TENANT" },
     { name: "EMPLOYEE", scope: "TENANT" }
   ];
@@ -389,6 +390,20 @@ async function main() {
   if (!systemAdminRole) {
     throw new Error("SYSTEM_ADMIN role no encontrado");
   }
+  // =========================
+  // 🔎 ROLE SYSTEM MONITOR
+  // =========================
+  const systemMonitorRole = await prisma.role.findFirst({
+    where: {
+      name: "SYSTEM_MONITOR",
+      scope: "SYSTEM",
+      companyId: null
+    }
+  });
+
+  if (!systemMonitorRole) {
+    throw new Error("SYSTEM_MONITOR role no encontrado");
+  }
 
   // =========================
   // 🔗 ASIGNAR PERMISOS A SYSTEM_ADMIN
@@ -423,6 +438,7 @@ async function main() {
       name: "SYSTEM"
     }
   });
+  
   //==========================
   // BRANCH SYSTEM
   //==========================
@@ -468,6 +484,43 @@ async function main() {
       data: {
         userId: adminUser.id,
         roleId: systemAdminRole.id,
+        companyId: null
+      }
+    });
+  }
+  // =========================
+  // 👤 USER SYSTEM MONITOR
+  // =========================
+
+  const monitorEmail = "monitor@erp.com";
+  const monitorPasswordHash = await bcrypt.hash("Monitor.2026", 10);
+
+  const monitorUser = await prisma.user.upsert({
+    where: { email: monitorEmail },
+    update: {
+      password: monitorPasswordHash
+    },
+    create: {
+      email: monitorEmail,
+      password: monitorPasswordHash,
+      fullName: "ERP Monitor",
+      companyId: systemCompany.id,
+      branchId: systemBranch.id
+    }
+  });
+  const existingMonitorRole = await prisma.userRole.findFirst({
+    where: {
+      userId: monitorUser.id,
+      roleId: systemMonitorRole.id,
+      companyId: null
+    }
+  });
+
+  if (!existingMonitorRole) {
+    await prisma.userRole.create({
+      data: {
+        userId: monitorUser.id,
+        roleId: systemMonitorRole.id,
         companyId: null
       }
     });

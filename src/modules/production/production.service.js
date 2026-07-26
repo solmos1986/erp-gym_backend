@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { applyTenantFilter } from "../../utils/tenant.util.js";
+import { executeProductionItem } from "../../utils/productionExecute.helper.js";
 
 const prisma = new PrismaClient();
 
@@ -12,6 +13,9 @@ export const createProductionOrder = async (req) => {
   // =========================
   // Validaciones básicas
   // =========================
+  if (!branchId) {
+    throw new Error("Debe seleccionar una sucursal.");
+  }
 
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error("Debe agregar al menos un producto a producir.");
@@ -37,6 +41,7 @@ export const createProductionOrder = async (req) => {
   // =========================
 
   const productionOrder = await prisma.$transaction(async (tx) => {
+    console.log('user id ',req.user);
     const createdOrder = await tx.productionOrder.create({
       data: {
         company: {
@@ -45,13 +50,11 @@ export const createProductionOrder = async (req) => {
           }
         },
 
-        ...(branchId && {
-          branch: {
-            connect: {
-              id: branchId
-            }
+        branch: {
+          connect: {
+            id: branchId
           }
-        }),
+        },
 
         number: nextNumber,
 
@@ -74,7 +77,7 @@ export const createProductionOrder = async (req) => {
 
     for (const item of items) {
       // Validar producto
-
+      console.log('item en items', item);
       const product = await tx.product.findFirst({
         where: {
           id: item.productId,
@@ -391,6 +394,7 @@ export const updateProductionOrder = async (req) => {
     // =========================
 
     for (const item of items) {
+      console.log('item en items', item);
       const product = await tx.product.findFirst({
         where: {
           id: item.productId,
@@ -410,9 +414,9 @@ export const updateProductionOrder = async (req) => {
 
           quantity: item.quantity,
 
-          unitCost: 0,
+          unitCost: item.unitCost ?? 0,
 
-          totalCost: 0,
+          totalCost: item.totalCost ?? 0,
 
           notes: item.notes?.trim() || null
         }
@@ -477,7 +481,7 @@ export const updateProductionOrder = async (req) => {
 // =========================
 // ❌ CANCELAR ORDEN
 // =========================
-export const deleteProductionOrder = async (req) => {
+export const cancelProductionOrder = async (req) => {
   const { id } = req.params;
 
   // =========================
@@ -761,42 +765,30 @@ export const finishProductionOrderItem = async (req) => {
     }
 
     // ==================================================
-    // AQUÍ MÁS ADELANTE SE EJECUTARÁ LA PRODUCCIÓN
+    // EJECUTAR LA PRODUCCIÓN
     // ==================================================
-    //
-    // await executeProductionItem(tx, item.id);
-    //
-    // ==================================================
-
-    // =========================
-    // Finalizar Item
-    // =========================
-
-    const updatedItem = await tx.productionOrderItem.update({
-      where: {
-        id: itemId
-      },
-
-      data: {
-        status: "COMPLETED"
-      },
-
-      include: {
-        product: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
-            unit: true
-          }
-        }
-      }
-    });
-
+    
+    await productionExecute(tx, req.user.companyId, item.productionOrder.branchId, req.user.userId, item.id);
+    
     // =========================
     // ¿Quedan Items pendientes?
     // =========================
-
+    const updatedItem = await tx.productionOrderItem.findUnique({
+        where:{
+            id:itemId
+        },
+        include:{
+            product:{
+                select:{
+                    id:true,
+                    code:true,
+                    name:true,
+                    unit:true
+                }
+            }
+        }
+    });
+    
     const pendingItems = await tx.productionOrderItem.count({
       where: {
         productionOrderId: item.productionOrderId,

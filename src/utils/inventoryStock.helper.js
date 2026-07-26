@@ -48,8 +48,6 @@ export async function calculateStock(tx, companyId, branchId, productId, movemen
       throw new Error(`Tipo de movimiento no soportado: ${movementType}`);
   }
 
-
-
   return stock;
 }
 
@@ -72,7 +70,8 @@ export const getStockMap = async (tx, companyId, branchId = null) => {
   for (const movement of movements) {
     const current = stockMap.get(movement.productId) || 0;
 
-    let qty = Number(movement.quantity);
+    // ✅ Agregar esta línea
+    let stock = current;
 
     switch (movement.movementType) {
       case "PURCHASE":
@@ -91,6 +90,9 @@ export const getStockMap = async (tx, companyId, branchId = null) => {
         stock -= Number(movement.quantity);
         break;
     }
+
+    // ✅ Y esta línea al final del for
+    stockMap.set(movement.productId, stock);
   }
 
   return stockMap;
