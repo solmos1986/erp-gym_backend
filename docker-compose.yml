@@ -20,8 +20,8 @@ services:
     ports:
       - "5432:5432" # Exponer el puerto 5432 para PostgreSQL
     environment:
-      POSTGRES_USER: "erp_user"
-      POSTGRES_PASSWORD: "Erp123456!"
+      POSTGRES_USER: "erp_usser"
+      POSTGRES_PASSWORD: "Erp987987"
       POSTGRES_DB: "erp_saas"
     networks:
       - default # Usamos la red predeterminada de Docker
