@@ -9,6 +9,7 @@ services:
       - .env
     volumes:
       - /www/uploads:/app/uploads
+      - /www/logs/erp_backend:/app/logs
     depends_on:
       - postgres # Asegúrate de que el backend dependa de PostgreSQL
     networks:
