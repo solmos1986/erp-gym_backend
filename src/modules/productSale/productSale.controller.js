@@ -22,3 +22,23 @@ export const createProductSale = async (req, res, next) => {
     next(error);
   }
 };
+
+// =========================
+// 🛒 ANULLAR VENTA DE PRODUCTOS
+// =========================
+export const annulProductSale = async (req, res, next) => {
+  try {
+
+    const result = await productSaleService.annulProductSale({
+      saleId: req.params.id,
+      companyId: req.user.companyId,
+      branchId: req.user.branchId,
+      userId: req.user.id,
+      isOwner: req.user.role === "OWNER"
+    });
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};

@@ -1,6 +1,7 @@
 import prisma from "../../config/prisma.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { auth } from "../../utils/logger.js";
 
 // =======================
 // LOGIN
@@ -8,6 +9,7 @@ import jwt from "jsonwebtoken";
 export const login = async (req, res) => {
   console.log("LOGIN REQUEST BODY:", req.body); // 🔥 DEBUG
   const { email, password } = req.body;
+  
   console.log("usuario", email, "contraseña: ", password);
   // 🔥 DEBUG
   try {
@@ -31,15 +33,37 @@ export const login = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({ message: "Usuario Invalido" });
+
+      auth({
+        event: "LOGIN_FAILED",
+        email,
+        ip: clientIp,
+        userAgent: req.headers["user-agent"],
+        reason: "USER_NOT_FOUND"
+      });
+
+      return res.status(401).json({
+        message: "Usuario Invalido"
+      });
     }
 
     // 🔐 Validar password
     const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {
-      return res.status(401).json({ message: "Contraseña Invalida" });
-    }
+
+  auth({
+    event: "LOGIN_FAILED",
+    email,
+    // ip: clientIp,
+    userAgent: req.headers["user-agent"],
+    reason: "INVALID_PASSWORD"
+  });
+
+  return res.status(401).json({
+    message: "Contraseña Invalida"
+  });
+}
     // ==========================
     // 🌐 OBTENER IP PUBLICA REAL
     // ==========================
@@ -105,25 +129,38 @@ export const login = async (req, res) => {
     // ==========================
     // 🔑 JWT
     // ==========================
+    const jwtPayload = {
+      userId: user.id,
+      companyId: user.companyId || null,
+      branchId: user.branchId || null,
+      isOwner: user.isOwner,
+      systemRoles,
+      permissions: uniquePermissions
+    };
+
     const token = jwt.sign(
-      {
-        userId: user.id,
-        companyId: user.companyId || null,
-        branchId: user.branchId || null,
-        isOwner: user.isOwner, // 👈 NUEVO
-        systemRoles,
-        permissions: uniquePermissions // 🔥 ARRAY GARANTIZADO
-      },
+      jwtPayload,
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
+
+    // ==========================
+    // 📝 AUDITORÍA LOGIN
+    // ==========================
+    auth({
+      event: "LOGIN_SUCCESS",
+      email: user.email,
+     // ip: clientIp,
+      userAgent: req.headers["user-agent"],
+      jwtPayload
+    });
 
     res.json({
       token,
       user: {
         id: user.id,
         email: user.email,
-        isOwner: user.isOwner, // 🔥 AGREGAR
+        isOwner: user.isOwner,
         systemRoles,
         permissions: uniquePermissions,
         companies: tenantRoles

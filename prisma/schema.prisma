@@ -888,6 +888,7 @@ enum SaleItemType {
 enum SaleStatus {
   DRAFT
   CONFIRMED
+  PENDING
   CANCELLED
 }
 

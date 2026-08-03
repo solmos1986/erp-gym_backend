@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { tenant } from "../utils/logger.js";
 
 export const requireAuth = (req, res, next) => {
   try {
@@ -14,9 +15,19 @@ export const requireAuth = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded;
+tenant({
+    event: "JWT_VERIFIED",
+    method: req.method,
+    url: req.originalUrl,
+    // ip: req.ip,
+    userId: decoded.userId,
+    companyId: decoded.companyId,
+    branchId: decoded.branchId
+});
 
-    next();
+req.user = decoded;
+
+next();
   } catch (error) {
     return res.status(401).json({
       message: "Token inválido"

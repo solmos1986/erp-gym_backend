@@ -259,7 +259,7 @@ export const getStockByBranch = async (req, res) => {
       where.branchId = req.user.branchId;
     }
 
-    const movements = await prisma.inventoryMovement.findMany({
+    const products = await prisma.productBranch.findMany({
       where,
 
       include: {
@@ -270,44 +270,23 @@ export const getStockByBranch = async (req, res) => {
             name: true
           }
         }
+      },
+
+      orderBy: {
+        product: {
+          code: "asc"
+        }
       }
     });
 
-    const stockMap = new Map();
-
-    for (const movement of movements) {
-      const key = movement.productId;
-
-      if (!stockMap.has(key)) {
-        stockMap.set(key, {
-          productId: movement.product.id,
-          code: movement.product.code,
-          name: movement.product.name,
-          stock: 0
-        });
-      }
-
-      const item = stockMap.get(key);
-
-      switch (movement.movementType) {
-        case "INITIAL_STOCK":
-        case "PURCHASE":
-        case "ADJUSTMENT_IN":
-        case "TRANSFER_IN":
-        case "SALE_CANCEL":
-          item.stock += Number(movement.quantity);
-          break;
-
-        case "SALE":
-        case "ADJUSTMENT_OUT":
-        case "TRANSFER_OUT":
-        case "PURCHASE_CANCEL":
-          item.stock -= Number(movement.quantity);
-          break;
-      }
-    }
-
-    return res.json(Array.from(stockMap.values()));
+    return res.json(
+      products.map((item) => ({
+        productId: item.product.id,
+        code: item.product.code,
+        name: item.product.name,
+        stock: Number(item.currentStock)
+      }))
+    );
   } catch (error) {
     console.error("Error obteniendo stock:", error);
 

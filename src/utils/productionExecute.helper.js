@@ -97,10 +97,6 @@ export async function executeProductionItem(tx, companyId, branchId, userId, pro
   }
 
   // ============================================
-  // SIGUE EN LA PARTE 2
-  // ============================================
-
-  // ============================================
   // CONSUMIR MATERIA PRIMA
   // ============================================
 
@@ -124,13 +120,13 @@ export async function executeProductionItem(tx, companyId, branchId, userId, pro
     });
 
     // ============================================
-    // NUEVO STOCK
+    // CALCULA EL NUEVO STOCK DE LA MATERIA PRIMA
     // ============================================
 
     const stock = await calculateStock(tx, companyId, branchId, material.materialId, "PRODUCTION_OUT", material.quantity);
 
     // ============================================
-    // ACTUALIZAR PRODUCTBRANCH
+    // ACTUALIZAR EL CURRENTSTOCK EN PRODUCTBRANCH
     // ============================================
 
     await tx.productBranch.update({
@@ -148,7 +144,7 @@ export async function executeProductionItem(tx, companyId, branchId, userId, pro
     });
 
     // ============================================
-    // INVENTORY MOVEMENT
+    // INVENTORY MOVEMENT REGISTRA EL CONSUMO DE ESA MATERIA PRIMA
     // ============================================
 
     await tx.inventoryMovement.create({
@@ -183,13 +179,24 @@ export async function executeProductionItem(tx, companyId, branchId, userId, pro
   }
 
   // ============================================
-  // CALCULAR NUEVO STOCK
+  // CALCULAR NUEVO STOCK DEL ITEM PRODUCIDO
   // ============================================
+  const finishedProductBranch = await tx.productBranch.findUnique({
+    where: {
+      branchId_productId: {
+        branchId,
+        productId: productionItem.productId
+      }
+    }
+  });
 
+  if (!finishedProductBranch) {
+    throw new Error(`No existe inventario para ${productionItem.product.name}.`);
+  }
   const finishedStock = await calculateStock(tx, companyId, branchId, productionItem.productId, "PRODUCTION_IN", productionItem.quantity);
 
   // ============================================
-  // ACTUALIZAR PRODUCTBRANCH
+  // ACTUALIZAR CURRENT STOCK EN PRODUCTBRANCH
   // ============================================
 
   await tx.productBranch.update({
@@ -207,7 +214,7 @@ export async function executeProductionItem(tx, companyId, branchId, userId, pro
   });
 
   // ============================================
-  // INVENTORY MOVEMENT
+  // INVENTORY MOVEMENT PRODUCTION_IN REGISTRA EL MOVIMIENTO DEL ITEM PRODUCIDO
   // ============================================
 
   await tx.inventoryMovement.create({
@@ -226,13 +233,13 @@ export async function executeProductionItem(tx, companyId, branchId, userId, pro
 
       quantity: productionItem.quantity,
 
-      unitCost: productionItem.unitCost,
+      unitCost: Number(finishedProductBranch.unitCost),
 
-      totalCost: Number(productionItem.unitCost) * Number(productionItem.quantity),
+      totalCost: Number(finishedProductBranch.unitCost) * Number(productionItem.quantity),
 
       stockAfter: finishedStock,
 
-      unitCostAfter: productionItem.unitCost,
+      unitCostAfter: Number(finishedProductBranch.unitCost),
 
       notes: `Producción ${productionItem.productionOrder.number}`,
 
@@ -243,7 +250,7 @@ export async function executeProductionItem(tx, companyId, branchId, userId, pro
   // ============================================
   // ACTUALIZAR ITEM DE PRODUCCIÓN
   // ============================================
-
+  console.log("aqui antes de completed?????");
   await tx.productionOrderItem.update({
     where: {
       id: productionItem.id

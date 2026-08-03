@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { createCashMovementPayments } from "../../utils/payment.helper.js";
 import { calculateStock } from "../../utils/inventoryStock.helper.js";
 import { calculateCost } from "../../utils/inventoryCost.helper.js";
+import { recalculateProductionCosts } from "../../utils/productionCost.helper.js";
 
 const prisma = new PrismaClient();
 
@@ -28,6 +29,7 @@ export const createPurchase = async ({ supplierId, companyId, branchId, userId, 
       where: {
         companyId,
         branchId,
+        openedById: userId,
         status: "OPEN"
       }
     });
@@ -196,6 +198,12 @@ export const createPurchase = async ({ supplierId, companyId, branchId, userId, 
           unitCost: cost
         }
       });
+
+      // =========================
+      // 🏭 RECALCULAR COSTOS DE PRODUCCIÓN
+      // =========================
+
+      await recalculateProductionCosts(tx, companyId, branchId, product.id);
 
       // =========================
       // 📦 MOVIMIENTO INVENTARIO

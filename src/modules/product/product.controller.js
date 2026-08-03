@@ -12,11 +12,11 @@ export const createProduct = async (req, res) => {
 
   const productData = req.body.product ?? req.body;
   const bom = req.body.bom ?? null;
-console.log("================================");
-console.log("BODY:", JSON.stringify(req.body, null, 2));
-console.log("PRODUCT:", productData);
-console.log("unitCost recibido:", productData.unitCost);
-console.log("================================");
+  console.log("================================");
+  console.log("BODY:", JSON.stringify(req.body, null, 2));
+  console.log("PRODUCT:", productData);
+  console.log("unitCost recibido:", productData.unitCost);
+  console.log("================================");
   let {
     code,
     barcode,
@@ -583,8 +583,8 @@ export const updateProduct = async (req, res) => {
   // Payload
   // =========================
 
-  const { product = {}, bom = {} } = req.body;
-
+  const { product = {} } = req.body;
+  const bom = req.body.bom ?? {};
   let {
     code,
     barcode,
@@ -612,7 +612,7 @@ export const updateProduct = async (req, res) => {
   // BOM
   // =========================
 
-  const { indirectCostPercent = 0, items = [] } = bom;
+  const { items = [] } = bom;
   try {
     // =========================
     // Verificar existencia
@@ -833,46 +833,46 @@ export const updateProduct = async (req, res) => {
       // =========================
 
       const updatedProduct = await tx.product.update({
-          where: {
-              id
-          },
+        where: {
+          id
+        },
 
-          data: {
-              code,
-              barcode,
-              name,
-              description,
-              imageUrl,
+        data: {
+          code,
+          barcode,
+          name,
+          description,
+          imageUrl,
 
-              productType,
-              sourceType,
+          productType,
+          sourceType,
 
-              unit,
+          unit,
 
-              isActive,
+          isActive,
 
-              category: {
-                  connect: {
-                      id: productCategoryId
-                  }
-              }
+          category: {
+            connect: {
+              id: productCategoryId
+            }
           }
+        }
       });
       await tx.productBranch.update({
-          where: {
-              branchId_productId: {
-                  branchId: req.user.branchId,
-                  productId: updatedProduct.id
-              }
-          },
-
-          data: {
-              unitCost,
-              salePrice,
-              minStock,
-              maxStock,
-              reorderPoint
+        where: {
+          branchId_productId: {
+            branchId: req.user.branchId,
+            productId: updatedProduct.id
           }
+        },
+
+        data: {
+          unitCost,
+          salePrice,
+          minStock,
+          maxStock,
+          reorderPoint
+        }
       });
 
       // =========================
@@ -984,18 +984,18 @@ export const updateProduct = async (req, res) => {
               items: {
                 include: {
                   material: {
-                      include: {
-                          productBranches: {
-                              where: {
-                                  branchId: req.user.branchId
-                              },
-                              select: {
-                                  unitCost: true,
-                                  currentStock: true,
-                                  salePrice: true
-                              }
-                          }
+                    include: {
+                      productBranches: {
+                        where: {
+                          branchId: req.user.branchId
+                        },
+                        select: {
+                          unitCost: true,
+                          currentStock: true,
+                          salePrice: true
+                        }
                       }
+                    }
                   }
                 }
               }

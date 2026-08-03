@@ -1,7 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { applyTenantFilter } from "../../utils/tenant.util.js";
 import { executeProductionItem } from "../../utils/productionExecute.helper.js";
-
+import { createProductionOrderHelper } from "../../utils/createProductionOrder.helper.js";
+import { calculateStock } from "../../utils/inventoryStock.helper.js";
 const prisma = new PrismaClient();
 
 // =========================
@@ -13,6 +14,7 @@ export const createProductionOrder = async (req) => {
   // =========================
   // Validaciones básicas
   // =========================
+
   if (!branchId) {
     throw new Error("Debe seleccionar una sucursal.");
   }
@@ -22,139 +24,19 @@ export const createProductionOrder = async (req) => {
   }
 
   // =========================
-  // Obtener siguiente número
-  // =========================
-
-  const lastOrder = await prisma.productionOrder.findFirst({
-    where: {
-      companyId: req.user.companyId
-    },
-    orderBy: {
-      number: "desc"
-    }
-  });
-
-  const nextNumber = lastOrder ? lastOrder.number + 1 : 1;
-
-  // =========================
   // Crear Orden
   // =========================
 
   const productionOrder = await prisma.$transaction(async (tx) => {
-    console.log('user id ',req.user);
-    const createdOrder = await tx.productionOrder.create({
-      data: {
-        company: {
-          connect: {
-            id: req.user.companyId
-          }
-        },
-
-        branch: {
-          connect: {
-            id: branchId
-          }
-        },
-
-        number: nextNumber,
-
-        originType,
-        originId,
-
-        notes: notes?.trim() || null,
-
-        requestedBy: {
-          connect: {
-            id: req.user.userId
-          }
-        }
-      }
-    });
-
-    // =========================
-    // Crear Items
-    // =========================
-
-    for (const item of items) {
-      // Validar producto
-      console.log('item en items', item);
-      const product = await tx.product.findFirst({
-        where: {
-          id: item.productId,
-          ...applyTenantFilter(req)
-        }
-      });
-
-      if (!product) {
-        throw new Error("Producto no encontrado.");
-      }
-
-      await tx.productionOrderItem.create({
-        data: {
-          productionOrder: {
-            connect: {
-              id: createdOrder.id
-            }
-          },
-
-          product: {
-            connect: {
-              id: item.productId
-            }
-          },
-
-          quantity: item.quantity,
-
-          unitCost: item.unitCost ?? 0,
-
-          totalCost: item.totalCost ?? 0,
-
-          notes: item.notes?.trim() || null
-        }
-      });
-    }
-
-    // =========================
-    // Retornar Orden completa
-    // =========================
-
-    return await tx.productionOrder.findUnique({
-      where: {
-        id: createdOrder.id
-      },
-
-      include: {
-        requestedBy: {
-          select: {
-            id: true,
-            fullName: true
-          }
-        },
-
-        branch: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-                unit: true
-              }
-            }
-          },
-
-          orderBy: {
-            createdAt: "asc"
-          }
-        }
-      }
+    return await createProductionOrderHelper(tx, {
+      companyId: req.user.companyId,
+      branchId,
+      userId: req.user.userId,
+      originType,
+      originId,
+      notes,
+      items,
+      tenantFilter: applyTenantFilter(req)
     });
   });
 
@@ -394,7 +276,7 @@ export const updateProductionOrder = async (req) => {
     // =========================
 
     for (const item of items) {
-      console.log('item en items', item);
+      console.log("item en items", item);
       const product = await tx.product.findFirst({
         where: {
           id: item.productId,
@@ -767,28 +649,28 @@ export const finishProductionOrderItem = async (req) => {
     // ==================================================
     // EJECUTAR LA PRODUCCIÓN
     // ==================================================
-    
-    await productionExecute(tx, req.user.companyId, item.productionOrder.branchId, req.user.userId, item.id);
-    
+
+    await executeProductionItem(tx, req.user.companyId, item.productionOrder.branchId, req.user.userId, item.id);
+
     // =========================
     // ¿Quedan Items pendientes?
     // =========================
     const updatedItem = await tx.productionOrderItem.findUnique({
-        where:{
-            id:itemId
-        },
-        include:{
-            product:{
-                select:{
-                    id:true,
-                    code:true,
-                    name:true,
-                    unit:true
-                }
-            }
+      where: {
+        id: itemId
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            unit: true
+          }
         }
+      }
     });
-    
+
     const pendingItems = await tx.productionOrderItem.count({
       where: {
         productionOrderId: item.productionOrderId,
@@ -804,11 +686,11 @@ export const finishProductionOrderItem = async (req) => {
     // =========================
 
     if (pendingItems === 0) {
-      await tx.productionOrder.update({
+      console.log("aqui antes de completed 2??????");
+      const productionOrder = await tx.productionOrder.update({
         where: {
           id: item.productionOrderId
         },
-
         data: {
           status: "COMPLETED",
 
@@ -821,6 +703,90 @@ export const finishProductionOrderItem = async (req) => {
           finishedAt: new Date()
         }
       });
+      console.log("aqui despues de completed 2?????");
+
+      // =========================
+      // ACTUALIZAR VENTA
+      // =========================
+
+      if (productionOrder.originType === "SALE" && productionOrder.originId) {
+        // =========================
+        // ENTREGAR PRODUCTOS PRODUCIDOS
+        // =========================
+
+        const productionItems = await tx.productionOrderItem.findMany({
+          where: {
+            productionOrderId: productionOrder.id
+          }
+        });
+
+        for (const productionItem of productionItems) {
+          const productBranch = await tx.productBranch.findUnique({
+            where: {
+              branchId_productId: {
+                branchId: productionOrder.branchId,
+                productId: productionItem.productId
+              }
+            }
+          });
+
+          const stock = await calculateStock(
+            tx,
+            productionOrder.companyId,
+            productionOrder.branchId,
+            productionItem.productId,
+            "SALE",
+            productionItem.quantity
+          );
+
+          await tx.productBranch.update({
+            where: {
+              id: productBranch.id
+            },
+            data: {
+              currentStock: stock
+            }
+          });
+
+          await tx.inventoryMovement.create({
+            data: {
+              companyId: productionOrder.companyId,
+              branchId: productionOrder.branchId,
+
+              productId: productionItem.productId,
+
+              movementType: "SALE",
+
+              referenceType: "SALE",
+              referenceId: productionOrder.originId,
+
+              quantity: productionItem.quantity,
+
+              unitCost: productBranch.unitCost,
+              totalCost: Number(productBranch.unitCost) * Number(productionItem.quantity),
+
+              stockAfter: stock,
+              unitCostAfter: productBranch.unitCost,
+
+              notes: `Entrega automática desde Producción`,
+
+              createdById: req.user.userId
+            }
+          });
+        }
+
+        // =========================
+        // ACTUALIZAR VENTA
+        // =========================
+        await tx.sale.update({
+          where: {
+            id: productionOrder.originId
+          },
+          data: {
+            fulfillmentStatus: "READY"
+          }
+        });
+      }
     }
 
     return updatedItem;
