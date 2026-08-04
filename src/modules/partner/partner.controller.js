@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { applyTenantFilter } from "../../utils/tenant.util.js";
-import { sendCommandToAgent, notifyFrontend } from "../../lib/websocket.server.js";
+import { sendCommandToAgent, notifyFrontend, notifyBranch } from "../../lib/websocket.server.js";
 import XLSX from "xlsx";
 
 const prisma = new PrismaClient();

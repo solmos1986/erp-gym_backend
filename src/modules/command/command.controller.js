@@ -1,6 +1,6 @@
 import prisma from "../../lib/prisma.js";
 import { getAndLockCommands } from "./command.service.js";
-import { notifyFrontend } from "../../lib/websocket.server.js";
+import { notifyBranch } from "../../lib/websocket.server.js";
 
 // 🔵 GET /agent/commands
 export async function getAgentCommands(req, res) {
