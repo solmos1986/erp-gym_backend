@@ -9,7 +9,7 @@ import { auth } from "../../utils/logger.js";
 export const login = async (req, res) => {
   console.log("LOGIN REQUEST BODY:", req.body); // 🔥 DEBUG
   const { email, password } = req.body;
-  
+
   console.log("usuario", email, "contraseña: ", password);
   // 🔥 DEBUG
   try {
@@ -33,7 +33,6 @@ export const login = async (req, res) => {
     });
 
     if (!user) {
-
       auth({
         event: "LOGIN_FAILED",
         email,
@@ -51,19 +50,18 @@ export const login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {
+      auth({
+        event: "LOGIN_FAILED",
+        email,
+        // ip: clientIp,
+        userAgent: req.headers["user-agent"],
+        reason: "INVALID_PASSWORD"
+      });
 
-  auth({
-    event: "LOGIN_FAILED",
-    email,
-    // ip: clientIp,
-    userAgent: req.headers["user-agent"],
-    reason: "INVALID_PASSWORD"
-  });
-
-  return res.status(401).json({
-    message: "Contraseña Invalida"
-  });
-}
+      return res.status(401).json({
+        message: "Contraseña Invalida"
+      });
+    }
     // ==========================
     // 🌐 OBTENER IP PUBLICA REAL
     // ==========================
@@ -138,11 +136,7 @@ export const login = async (req, res) => {
       permissions: uniquePermissions
     };
 
-    const token = jwt.sign(
-      jwtPayload,
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const token = jwt.sign(jwtPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     // ==========================
     // 📝 AUDITORÍA LOGIN
@@ -150,7 +144,7 @@ export const login = async (req, res) => {
     auth({
       event: "LOGIN_SUCCESS",
       email: user.email,
-     // ip: clientIp,
+      // ip: clientIp,
       userAgent: req.headers["user-agent"],
       jwtPayload
     });

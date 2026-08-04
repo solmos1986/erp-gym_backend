@@ -28,7 +28,6 @@ export const createProductSale = async (req, res, next) => {
 // =========================
 export const annulProductSale = async (req, res, next) => {
   try {
-
     const result = await productSaleService.annulProductSale({
       saleId: req.params.id,
       companyId: req.user.companyId,

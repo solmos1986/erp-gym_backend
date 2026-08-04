@@ -15,19 +15,19 @@ export const requireAuth = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-tenant({
-    event: "JWT_VERIFIED",
-    method: req.method,
-    url: req.originalUrl,
-    // ip: req.ip,
-    userId: decoded.userId,
-    companyId: decoded.companyId,
-    branchId: decoded.branchId
-});
+    tenant({
+      event: "JWT_VERIFIED",
+      method: req.method,
+      url: req.originalUrl,
+      // ip: req.ip,
+      userId: decoded.userId,
+      companyId: decoded.companyId,
+      branchId: decoded.branchId
+    });
 
-req.user = decoded;
+    req.user = decoded;
 
-next();
+    next();
   } catch (error) {
     return res.status(401).json({
       message: "Token inválido"

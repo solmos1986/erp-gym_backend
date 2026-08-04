@@ -1,7 +1,17 @@
 import { WebSocketServer } from "ws";
+import jwt from "jsonwebtoken";
 
-const clients = new Map(); // 🤖 agents
-const frontends = new Set(); // 🖥️ frontends
+// ======================================================
+// 🤖 AGENTS
+// ======================================================
+const agents = new Map();
+
+// ======================================================
+// 🖥️ FRONTENDS
+// key = WebSocket
+// value = contexto autenticado
+// ======================================================
+const frontends = new Map();
 
 export function initWebSocket(server) {
   const wss = new WebSocketServer({ server });
@@ -11,69 +21,144 @@ export function initWebSocket(server) {
       try {
         const data = JSON.parse(message);
 
-        // ==========================
-        // 🤖 AGENT (lo tuyo, intacto)
-        // ==========================
+        // ==================================================
+        // REGISTER AGENT
+        // ==================================================
         if (data.type === "REGISTER") {
           const { agentKey, companyId, branchId } = data;
 
-          clients.set(agentKey, {
+          agents.set(agentKey, {
             ws,
             companyId,
             branchId
           });
+
+          console.log("🤖 Agent conectado:", {
+            agentKey,
+            companyId,
+            branchId
+          });
+
+          return;
         }
 
-        // ==========================
-        // 🖥️ FRONTEND (nuevo)
-        // ==========================
+        // ==================================================
+        // REGISTER FRONTEND
+        // ==================================================
         if (data.type === "REGISTER_FRONTEND") {
-          ws.clientType = "FRONTEND";
-          frontends.add(ws);
+          if (!data.token) {
+            ws.close();
+            return;
+          }
+
+          let decoded;
+
+          try {
+            decoded = jwt.verify(data.token, process.env.JWT_SECRET);
+          } catch {
+            ws.close();
+            return;
+          }
+
+          frontends.set(ws, {
+            userId: decoded.userId,
+            companyId: decoded.companyId,
+            branchId: decoded.branchId
+          });
+
+          console.log("🖥️ Frontend conectado:", {
+            userId: decoded.userId,
+            companyId: decoded.companyId,
+            branchId: decoded.branchId
+          });
+
+          return;
         }
       } catch (err) {
-        console.error("❌ WS error:", err);
+        console.error("WS ERROR:", err);
       }
     });
 
     ws.on("close", () => {
+      // ==========================================
       // limpiar agents
-      for (const [key, client] of clients.entries()) {
-        if (client.ws === ws) {
-          clients.delete(key);
+      // ==========================================
+      for (const [key, agent] of agents.entries()) {
+        if (agent.ws === ws) {
+          agents.delete(key);
+
+          break;
         }
       }
 
+      // ==========================================
       // limpiar frontends
-      if (frontends.has(ws)) {
-        frontends.delete(ws);
-      }
+      // ==========================================
+      frontends.delete(ws);
     });
   });
 }
 
-// ==========================
-// 🤖 AGENT (lo tuyo intacto)
-// ==========================
-export function sendCommandToAgent({ companyId, branchId, payload }) {
-  for (const client of clients.values()) {
-    if (client.companyId === companyId && client.branchId === branchId) {
-      client.ws.send(
-        JSON.stringify({
-          type: payload
-        })
-      );
+// ======================================================
+// AGENTS
+// ======================================================
+export function sendCommandToAgent(companyId, branchId, payload) {
+  for (const agent of agents.values()) {
+    if (
+      agent.companyId === companyId &&
+      agent.branchId === branchId &&
+      agent.ws.readyState === 1
+    ) {
+      agent.ws.send(JSON.stringify(payload));
     }
   }
 }
 
-// ==========================
-// 🖥️ FRONTEND (nuevo)
-// ==========================
-export function notifyFrontend(event) {
-  for (const ws of frontends) {
+// ======================================================
+// TODOS
+// ======================================================
+export function notifyAll(event) {
+  for (const [ws] of frontends) {
     if (ws.readyState === 1) {
       ws.send(JSON.stringify(event));
     }
   }
 }
+
+// ======================================================
+// EMPRESA
+// ======================================================
+export function notifyCompany({ companyId, event }) {
+  for (const [ws, client] of frontends) {
+    if (client.companyId === companyId && ws.readyState === 1) {
+      ws.send(JSON.stringify(event));
+    }
+  }
+}
+
+// ======================================================
+// SUCURSAL
+// ======================================================
+export function notifyBranch({ companyId, branchId, event }) {
+  for (const [ws, client] of frontends) {
+    if (client.companyId === companyId && client.branchId === branchId && ws.readyState === 1) {
+      ws.send(JSON.stringify(event));
+    }
+  }
+}
+
+// ======================================================
+// USUARIO
+// ======================================================
+export function notifyUser({ userId, event }) {
+  for (const [ws, client] of frontends) {
+    if (client.userId === userId && ws.readyState === 1) {
+      ws.send(JSON.stringify(event));
+    }
+  }
+}
+
+// ======================================================
+// COMPATIBILIDAD (TEMPORAL)
+// ======================================================
+export const notifyFrontend = notifyAll;

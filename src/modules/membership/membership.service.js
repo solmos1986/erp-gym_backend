@@ -212,9 +212,13 @@ export const purchase = async ({
     sendCommandToAgent(companyId, branchId, {
       type: "SYNC"
     });
-    notifyFrontend({
-      type: "MEMBERSHIP_UPDATE"
-    });
+   notifyBranch({
+    companyId,
+    branchId,
+    event: {
+        type: "MEMBERSHIP_UPDATE"
+    }
+});
 
     return {
       sale: commercialSale,
@@ -458,9 +462,13 @@ export const syncMembershipStatus = async ({ customerId, companyId, branchId }) 
     branchId,
     payload: "SYNC"
   });
-  notifyFrontend({
-    type: "MEMBERSHIP_UPDATE"
-  });
+  notifyBranch({
+    companyId,
+    branchId,
+    event: {
+        type: "MEMBERSHIP_UPDATE"
+    }
+});
 
   return {
     success: true
@@ -548,9 +556,13 @@ export const assignMembership = async ({ customerId, companyId, branchId, startD
     type: "SYNC"
   });
 
-  notifyFrontend({
-    type: "MEMBERSHIP_UPDATE"
-  });
+  notifyBranch({
+    companyId,
+    branchId,
+    event: {
+        type: "MEMBERSHIP_UPDATE"
+    }
+});
 
   return {
     success: true,
@@ -752,9 +764,13 @@ export const annulMembershipSale = async ({ saleId, companyId, branchId, userId,
         });
       }
 
-      notifyFrontend({
+      notifyBranch({
+    companyId,
+    branchId,
+    event: {
         type: "MEMBERSHIP_UPDATE"
-      });
+    }
+});
 
       return {
         success: true,
@@ -810,9 +826,13 @@ export const annulMembershipSale = async ({ saleId, companyId, branchId, userId,
       type: "SYNC"
     });
 
-    notifyFrontend({
-      type: "MEMBERSHIP_UPDATE"
-    });
+    notifyBranch({
+    companyId,
+    branchId,
+    event: {
+        type: "MEMBERSHIP_UPDATE"
+    }
+});
 
     return {
       success: true,

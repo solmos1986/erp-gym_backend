@@ -428,11 +428,11 @@ export const annulProductSale = async ({ saleId, companyId, branchId, userId, is
     }
     //Buscar la venta
     const sale = await tx.sale.findFirst({
-  where,
-  include: {
-    details: true
-  }
-});
+      where,
+      include: {
+        details: true
+      }
+    });
 
     if (!sale) {
       throw new Error("Venta no encontrada");
@@ -478,38 +478,27 @@ export const annulProductSale = async ({ saleId, companyId, branchId, userId, is
     });
 
     if (productionOrder) {
-    if (productionOrder.status === "PENDING") {
+      if (productionOrder.status === "PENDING") {
         await tx.productionOrder.update({
-            where: { id: productionOrder.id },
-            data: { status: "CANCELLED" }
+          where: { id: productionOrder.id },
+          data: { status: "CANCELLED" }
         });
 
         // No hubo movimientos de inventario
         // No crear SALE_CANCEL
-    } else if (productionOrder.status !== "COMPLETED") {
-        throw new Error(
-            "La orden de producción ya fue iniciada y no puede anularse la venta."
-        );
-    } else {
+      } else if (productionOrder.status !== "COMPLETED") {
+        throw new Error("La orden de producción ya fue iniciada y no puede anularse la venta.");
+      } else {
         // Regla para COMPLETED (la definiremos)
-    }
-} else {
-    // Venta normal de stock
-    for (const detail of sale.details) {
-        const stockAfter = await calculateStock(
-            tx,
-            companyId,
-            sale.branchId,
-            detail.itemId,
-            "SALE_CANCEL",
-            detail.quantity
-        );
+      }
+    } else {
+      // Venta normal de stock
+      for (const detail of sale.details) {
+        const stockAfter = await calculateStock(tx, companyId, sale.branchId, detail.itemId, "SALE_CANCEL", detail.quantity);
 
-        await tx.inventoryMovement.create({
-          
-        });
+        await tx.inventoryMovement.create({});
+      }
     }
-}
     //cancelar venta
     await tx.sale.update({
       where: {
@@ -519,7 +508,7 @@ export const annulProductSale = async ({ saleId, companyId, branchId, userId, is
         status: "CANCELLED"
       }
     });
-    
+
     //anular movimiento de caja
     await tx.cashMovement.updateMany({
       where: {

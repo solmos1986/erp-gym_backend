@@ -16,6 +16,6 @@ router.post("/", requireAuth, requirePermission("TENANT_SALES_CREATE"), tenantGu
 // =========================
 // 🛒 ANULAR VENTA PRODUCTOS
 // =========================
-router.patch("/:id/annul", requireAuth, requirePermission("TENANT_SALES_DELETE") , annulProductSale);
+router.patch("/:id/annul", requireAuth, requirePermission("TENANT_SALES_DELETE"), annulProductSale);
 
 export default router;

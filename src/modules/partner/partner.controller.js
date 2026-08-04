@@ -363,6 +363,7 @@ export const updatePartner = async (req, res) => {
 export const deletePartner = async (req, res) => {
   const { id } = req.params;
   const companyId = req.user.companyId;
+  const branchId = req.user.branchId;
   try {
     const partner = await prisma.partner.findFirst({
       where: {
@@ -415,8 +416,12 @@ export const deletePartner = async (req, res) => {
       type: "SYNC"
     });
 
-    notifyFrontend({
-      type: "MEMBERSHIP_UPDATE"
+    notifyBranch({
+      companyId,
+      branchId,
+      event: {
+        type: "MEMBERSHIP_UPDATE"
+      }
     });
 
     res.json({ message: "Cliente desactivado" });

@@ -26,6 +26,7 @@ export async function completeCommand(req, res) {
   try {
     const { id } = req.params;
     const { status, error } = req.body;
+    
 
     if (!id) {
       return res.status(400).json({ message: "ID requerido" });
@@ -48,6 +49,9 @@ export async function completeCommand(req, res) {
     if (command.branchId !== req.user.branchId) {
       return res.status(403).json({ message: "No autorizado" });
     }
+
+    const companyId = command.companyId;
+    const branchId = command.branchId;
 
     let attempts = command.attempts;
 
@@ -76,8 +80,12 @@ export async function completeCommand(req, res) {
       where: { id },
       data
     });
-    notifyFrontend({
-      type: "MEMBERSHIP_UPDATE"
+    notifyBranch({
+      companyId,
+      branchId,
+      event: {
+        type: "MEMBERSHIP_UPDATE"
+      }
     });
     return res.json({ ok: true });
   } catch (err) {
