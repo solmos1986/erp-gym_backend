@@ -66,11 +66,11 @@ export function initWebSocket(server) {
             branchId: decoded.branchId
           });
 
-          console.log("🖥️ Frontend conectado:", {
-            userId: decoded.userId,
-            companyId: decoded.companyId,
-            branchId: decoded.branchId
-          });
+          // console.log("🖥️ Frontend conectado:", {
+          //   userId: decoded.userId,
+          //   companyId: decoded.companyId,
+          //   branchId: decoded.branchId
+          // });
 
           return;
         }
