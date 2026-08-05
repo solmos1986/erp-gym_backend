@@ -232,7 +232,7 @@ export const purchase = async ({
 // =========================
 export const getAll = async (req) => {
   const { companyId, branchId: userBranchId, isOwner } = req.user;
-  
+
   const { search, planId, userId, branchId, status, from, to } = req.query;
 
   const where = {
@@ -309,20 +309,47 @@ export const getAll = async (req) => {
     };
   }
 
-  return await prisma.membershipSale.findMany({
-    where,
-    include: {
-      partner: true,
-      plan: true,
-      user: true,
-      commands: true,
-      company: true,
-      branch: true
-    },
-    orderBy: {
-      saleDate: "desc"
-    }
-  });
+  // return await prisma.membershipSale.findMany({
+  //   where,
+  //   include: {
+  //     partner: true,
+  //     plan: true,
+  //     user: true,
+  //     commands: true,
+  //     company: true,
+  //     branch: true
+  //   },
+  //   orderBy: {
+  //     saleDate: "desc"
+  //   }
+  // });
+  const memberships = await prisma.membershipSale.findMany({
+  where,
+  include: {
+    partner: true,
+    plan: true,
+    user: true,
+    commands: true,
+    company: true,
+    branch: true
+  },
+  orderBy: {
+    saleDate: "desc"
+  }
+});
+
+console.log("========== RESULT ==========");
+
+console.table(
+  memberships.slice(0, 10).map((m) => ({
+    id: m.id,
+    companyId: m.companyId,
+    branchId: m.branchId,
+    partner: m.partner?.name
+  }))
+);
+
+return memberships;
 };
 // =========================
 // 🔍 DETALLE
@@ -387,6 +414,7 @@ export const getAllStatus = async (companyId) => {
     },
     orderBy: { endDate: "asc" }
   });
+  
 };
 // =========================
 // 🔄 REINTENTAR PAGO
