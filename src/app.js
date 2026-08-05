@@ -47,6 +47,17 @@ startMembershipExpirationJob();
 app.set("trust proxy", true);
 app.use(express.json());
 
+app.use((req, res, next) => {
+  console.log("================================");
+  console.log("GLOBAL REQUEST");
+  console.log({
+    method: req.method,
+    url: req.originalUrl,
+    authorization: req.headers.authorization ? "SI" : "NO"
+  });
+  next();
+});
+
 // 🔥🔥🔥 IMPORTANTE (SERVIR IMÁGENES)
 app.use("/uploads", express.static("uploads"));
 
