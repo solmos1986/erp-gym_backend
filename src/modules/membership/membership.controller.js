@@ -28,6 +28,13 @@ export const purchaseMembership = async (req, res) => {
 // 📋 HISTORIAL
 // =========================
 export const getMemberships = async (req, res) => {
+  console.log("========== REQUEST ==========");
+  console.log({
+      url: req.originalUrl,
+      companyId: req.user.companyId,
+      branchId: req.user.branchId,
+      userId: req.user.userId
+  });
   try {
     const result = await membershipService.getAll(req);
     res.json(result);

@@ -232,7 +232,7 @@ export const purchase = async ({
 // =========================
 export const getAll = async (req) => {
   const { companyId, branchId: userBranchId, isOwner } = req.user;
-
+  
   const { search, planId, userId, branchId, status, from, to } = req.query;
 
   const where = {
